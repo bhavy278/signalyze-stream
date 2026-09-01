@@ -35,3 +35,37 @@ services:
     container_name: signalyze-redis
     ports:
       - "6379:6379"
+
+  ingest-service:
+    build: ./services/ingest-service
+    container_name: signalyze-ingest
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: signalyze-kafka:29092
+      SPRING_DATA_REDIS_HOST: signalyze-redis
+    depends_on:
+      - kafka
+      - redis
+
+  processing-service:
+    build: ./services/processing-service
+    container_name: signalyze-processing
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: signalyze-kafka:29092
+      SPRING_DATA_REDIS_HOST: signalyze-redis
+      MONGODB_URI: ${MONGODB_URI}
+    depends_on:
+      - kafka
+      - redis
+
+  query-service:
+    build: ./services/query-service
+    container_name: signalyze-query
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATA_REDIS_HOST: signalyze-redis
+      MONGODB_URI: ${MONGODB_URI}
+    depends_on:
+      - redis
