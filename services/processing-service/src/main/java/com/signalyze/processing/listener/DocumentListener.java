@@ -1,5 +1,6 @@
 package com.signalyze.processing.listener;
 
+import com.signalyze.processing.ai.AiSummarizer;
 import com.signalyze.processing.event.DocumentProcessed;
 import com.signalyze.processing.event.DocumentUploaded;
 import com.signalyze.processing.model.Analysis;
@@ -23,13 +24,16 @@ public class DocumentListener {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final AnalysisRepository analysisRepository;
     private final StringRedisTemplate redis;
+    private final AiSummarizer aiSummarizer;
 
     public DocumentListener(KafkaTemplate<String, Object> kafkaTemplate,
                             AnalysisRepository analysisRepository,
-                            StringRedisTemplate redis) {
+                            StringRedisTemplate redis,
+                            AiSummarizer aiSummarizer) {
         this.kafkaTemplate = kafkaTemplate;
         this.analysisRepository = analysisRepository;
         this.redis = redis;
+        this.aiSummarizer = aiSummarizer;
     }
 
     @KafkaListener(topics = "document.uploaded")
@@ -41,14 +45,8 @@ public class DocumentListener {
             throw new RuntimeException("Simulated processing failure for " + event.filename());
         }
 
-        // Simulate AI processing — replaced with the real RAG pipeline later
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        String summary = "Mock summary for " + event.filename();
+        String summary = aiSummarizer.summarize(event.filename(), event.content());
+        log.info("AI summary generated jobId={}", event.jobId());
 
         Analysis analysis = new Analysis(event.jobId(), event.filename(), "DONE", summary, Instant.now());
         analysisRepository.save(analysis);
