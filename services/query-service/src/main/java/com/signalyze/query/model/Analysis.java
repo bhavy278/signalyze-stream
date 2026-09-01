@@ -1,6 +1,8 @@
-package com.signalyze.processing.model;
+package com.signalyze.query.model;
 
 import java.time.Instant;
+
+
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -16,14 +18,6 @@ public class Analysis {
     private Instant createdAt;
 
     public Analysis() {
-    }
-
-    public Analysis(String jobId, String filename, String status, String summary, Instant createdAt) {
-        this.jobId = jobId;
-        this.filename = filename;
-        this.status = status;
-        this.summary = summary;
-        this.createdAt = createdAt;
     }
 
     public String getJobId() {
@@ -65,5 +59,4 @@ public class Analysis {
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
-
 }
