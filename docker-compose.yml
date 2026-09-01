@@ -55,6 +55,7 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: signalyze-kafka:29092
       SPRING_DATA_REDIS_HOST: signalyze-redis
       MONGODB_URI: ${MONGODB_URI}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
       - kafka
       - redis

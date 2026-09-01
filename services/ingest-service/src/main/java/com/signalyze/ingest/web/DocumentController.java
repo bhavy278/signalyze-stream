@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
@@ -36,8 +38,7 @@ public class DocumentController {
 
     @PostMapping
     public ResponseEntity<Map<String, String>> upload(@RequestParam("file") MultipartFile file,
-                                                      HttpServletRequest request) {
-        // Fixed-window rate limit: 5 uploads per minute per client IP
+                                                      HttpServletRequest request) throws IOException {
         String rateKey = "rate:" + request.getRemoteAddr();
         Long count = redis.opsForValue().increment(rateKey);
         if (count != null && count == 1L) {
@@ -50,8 +51,9 @@ public class DocumentController {
         }
 
         String jobId = UUID.randomUUID().toString();
+        String content = new String(file.getBytes(), StandardCharsets.UTF_8);
         DocumentUploaded event =
-                DocumentUploaded.of(jobId, file.getOriginalFilename(), file.getSize());
+                DocumentUploaded.of(jobId, file.getOriginalFilename(), file.getSize(), content);
 
         redis.opsForValue().set("status:" + jobId, "PROCESSING", Duration.ofHours(1));
         kafkaTemplate.send(KafkaTopicsConfig.DOCUMENT_UPLOADED, jobId, event);
