@@ -29,3 +29,9 @@ services:
       DYNAMIC_CONFIG_ENABLED: "true"
     depends_on:
       - kafka
+
+  redis:
+    image: redis:7-alpine
+    container_name: signalyze-redis
+    ports:
+      - "6379:6379"

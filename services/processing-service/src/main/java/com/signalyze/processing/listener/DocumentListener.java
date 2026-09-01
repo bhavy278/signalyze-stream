@@ -1,17 +1,18 @@
 package com.signalyze.processing.listener;
 
-import java.time.Instant;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.stereotype.Component;
-
 import com.signalyze.processing.event.DocumentProcessed;
 import com.signalyze.processing.event.DocumentUploaded;
 import com.signalyze.processing.model.Analysis;
 import com.signalyze.processing.repository.AnalysisRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Component;
+
+import java.time.Duration;
+import java.time.Instant;
 
 @Component
 public class DocumentListener {
@@ -21,11 +22,14 @@ public class DocumentListener {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final AnalysisRepository analysisRepository;
+    private final StringRedisTemplate redis;
 
     public DocumentListener(KafkaTemplate<String, Object> kafkaTemplate,
-            AnalysisRepository analysisRepository) {
+                            AnalysisRepository analysisRepository,
+                            StringRedisTemplate redis) {
         this.kafkaTemplate = kafkaTemplate;
         this.analysisRepository = analysisRepository;
+        this.redis = redis;
     }
 
     @KafkaListener(topics = "document.uploaded")
@@ -48,12 +52,11 @@ public class DocumentListener {
 
         Analysis analysis = new Analysis(event.jobId(), event.filename(), "DONE", summary, Instant.now());
         analysisRepository.save(analysis);
-        log.info("Saved analysis to MongoDB jobId={}", event.jobId());
+        redis.opsForValue().set("status:" + event.jobId(), "DONE", Duration.ofHours(1));
+        log.info("Saved analysis + set status=DONE jobId={}", event.jobId());
 
         DocumentProcessed processed = DocumentProcessed.done(event.jobId(), summary);
         kafkaTemplate.send(DOCUMENT_PROCESSED, event.jobId(), processed);
         log.info("Published DocumentProcessed jobId={} status=DONE", event.jobId());
     }
 }
-
-
