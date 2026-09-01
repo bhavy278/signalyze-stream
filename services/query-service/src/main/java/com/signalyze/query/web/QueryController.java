@@ -2,6 +2,7 @@ package com.signalyze.query.web;
 
 import com.signalyze.query.model.Analysis;
 import com.signalyze.query.repository.AnalysisRepository;
+import com.signalyze.query.service.AnalysisService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +18,14 @@ import java.util.Map;
 public class QueryController {
 
     private final AnalysisRepository analysisRepository;
+    private final AnalysisService analysisService;
     private final StringRedisTemplate redis;
 
-    public QueryController(AnalysisRepository analysisRepository, StringRedisTemplate redis) {
+    public QueryController(AnalysisRepository analysisRepository,
+                           AnalysisService analysisService,
+                           StringRedisTemplate redis) {
         this.analysisRepository = analysisRepository;
+        this.analysisService = analysisService;
         this.redis = redis;
     }
 
@@ -40,7 +45,7 @@ public class QueryController {
 
     @GetMapping("/{jobId}")
     public ResponseEntity<Analysis> getAnalysis(@PathVariable String jobId) {
-        return analysisRepository.findById(jobId)
+        return analysisService.getById(jobId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

@@ -12,3 +12,4 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - MongoDB persistence: processing-service saves each analysis to the `analyses` collection (MongoDB Atlas).
 - query-service: `GET /documents` and `GET /documents/{jobId}` to retrieve analyses from MongoDB.
 - Redis-backed job status (PROCESSING → DONE) with a `GET /documents/{jobId}/status` endpoint.
+- Cache-first reads in query-service: analyses served from Redis on hit, MongoDB on miss.
