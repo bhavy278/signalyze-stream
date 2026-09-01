@@ -6,3 +6,6 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 ### Added
 - Initial repository scaffold, docs structure, and conventions.
+- Local Kafka + Kafka UI via Docker Compose.
+- Async core: ingest-service publishes DocumentUploaded; processing-service consumes it and publishes DocumentProcessed.
+- Dead-letter error handling: messages that fail processing after 3 attempts are routed to the document.failed topic.

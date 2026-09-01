@@ -25,6 +25,10 @@ public class DocumentListener {
     public void onDocumentUploaded(DocumentUploaded event) {
         log.info("Received DocumentUploaded jobId:{} filename: {}", event.jobId(), event.filename());
 
+        if(event.filename()!=null && event.filename().contains("fail")){
+            throw new RuntimeException("Simulated processing failure for "+event.filename());
+        }
+        
         // Simulate document processing
         try {
             Thread.sleep(2000);
