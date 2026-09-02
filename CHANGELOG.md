@@ -17,3 +17,4 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - Dockerized all three services (multi-stage builds); the full stack (Kafka, Redis, services) runs via `docker compose up`.
 - Real AI analysis: processing-service calls OpenAI (gpt-4o-mini) to generate document summaries, replacing the mock; document text now flows through the pipeline.
 - Next.js frontend (web/) with a vintage-newspaper design system: blackletter masthead, Abril Fatface headlines, Oswald labels, Old Standard TT body, aged-paper grain texture.
+- Functional frontend: dropzone upload → status polling → analysis, wired to the backend through Next.js API routes (typed client + route handlers), with loading/empty/error states.
