@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface ChunkRepository extends MongoRepository<DocumentChunk, String> {
     List<DocumentChunk> findByJobId(String jobId);
+    void deleteByJobId(String jobId);
 }

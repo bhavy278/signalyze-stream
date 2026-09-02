@@ -47,3 +47,18 @@ export interface AskResponse {
   answer: string;
   sources: AskSource[];
 }
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  sources?: AskSource[] | null;
+  createdAt?: string;
+}
+
+export interface DocumentPage {
+  items: Analysis[];
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+}

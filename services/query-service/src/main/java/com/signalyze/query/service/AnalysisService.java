@@ -3,6 +3,8 @@ package com.signalyze.query.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signalyze.query.model.Analysis;
 import com.signalyze.query.repository.AnalysisRepository;
+import com.signalyze.query.repository.ChatRepository;
+import com.signalyze.query.repository.ChunkRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -18,11 +20,19 @@ public class AnalysisService {
     private static final String CACHE_PREFIX = "cache:doc:";
 
     private final AnalysisRepository repository;
+    private final ChunkRepository chunkRepository;
+    private final ChatRepository chatRepository;
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
 
-    public AnalysisService(AnalysisRepository repository, StringRedisTemplate redis, ObjectMapper objectMapper) {
+    public AnalysisService(AnalysisRepository repository,
+                           ChunkRepository chunkRepository,
+                           ChatRepository chatRepository,
+                           StringRedisTemplate redis,
+                           ObjectMapper objectMapper) {
         this.repository = repository;
+        this.chunkRepository = chunkRepository;
+        this.chatRepository = chatRepository;
         this.redis = redis;
         this.objectMapper = objectMapper;
     }
@@ -55,9 +65,11 @@ public class AnalysisService {
     public boolean delete(String jobId) {
         boolean existed = repository.existsById(jobId);
         repository.deleteById(jobId);
+        chunkRepository.deleteByJobId(jobId);
+        chatRepository.deleteByJobId(jobId);
         redis.delete(CACHE_PREFIX + jobId);
         redis.delete("status:" + jobId);
-        log.info("Deleted jobId={} (existed={})", jobId, existed);
+        log.info("Deleted jobId={} (existed={}) + chunks + chat", jobId, existed);
         return existed;
     }
 }
