@@ -35,21 +35,24 @@ export default function Home() {
 
       const poll = async (): Promise<void> => {
         attempts += 1;
-        const { status } = await getStatus(jobId);
-        const s = status.toUpperCase();
-
-        if (s === "DONE") {
-          setSelected(await getAnalysis(jobId));
-          setBusy(false);
-          return;
-        }
-        if (s === "FAILED") {
-          setSelected((prev) => (prev ? { ...prev, jobId, status: "FAILED" } : prev));
-          setBusy(false);
-          return;
+        try {
+          const { status } = await getStatus(jobId);
+          const s = status.toUpperCase();
+          if (s === "DONE") {
+            setSelected(await getAnalysis(jobId));
+            setBusy(false);
+            return;
+          }
+          if (s === "FAILED") {
+            setSelected((prev) => (prev ? { ...prev, jobId, status: "FAILED" } : prev));
+            setBusy(false);
+            return;
+          }
+        } catch {
+          // transient status error — keep polling until the timeout below
         }
         if (attempts > 40) {
-          setError("Analysis timed out.");
+          setError("Analysis timed out — is the backend running?");
           setBusy(false);
           return;
         }

@@ -31,6 +31,7 @@ export async function uploadDocument(file: File): Promise<UploadResponse> {
 
 export async function getStatus(jobId: string): Promise<StatusResponse> {
   const res = await fetch(`/api/documents/${jobId}/status`, { cache: "no-store" });
+  if (res.status === 404) return { jobId, status: "PROCESSING" };
   if (!res.ok) throw new Error("Status check failed");
   return res.json();
 }
