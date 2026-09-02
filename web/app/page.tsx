@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Analysis } from "@/lib/types";
+import type { Analysis, AskResponse } from "@/lib/types";
 import {
+  askDocument,
+  deleteDocument,
   getAnalysis,
   getStatus,
   listDocuments,
@@ -44,16 +46,20 @@ function timeAgo(iso: string): string {
 
 export default function Home() {
   const [docs, setDocs] = useState<Analysis[]>([]);
+  const [query, setQuery] = useState("");
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [docsError, setDocsError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const refresh = useCallback(async () => {
+  const [question, setQuestion] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [answer, setAnswer] = useState<AskResponse | null>(null);
+  const [askError, setAskError] = useState<string | null>(null);
+  const refresh = useCallback(async (q?: string) => {
     try {
-      const list = await listDocuments();
+      const list = await listDocuments(q);
       list.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
       setDocs(list);
       setDocsError(null);
@@ -65,8 +71,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    const t = setTimeout(() => void refresh(query.trim() || undefined), 250);
+    return () => clearTimeout(t);
+  }, [query, refresh]);
+
+  useEffect(() => {
+    setQuestion("");
+    setAnswer(null);
+    setAskError(null);
+  }, [selected?.jobId]);
 
   async function handleFile(file: File) {
     setError(null);
@@ -90,7 +103,7 @@ export default function Home() {
         if (s === "DONE") {
           setSelected(await getAnalysis(jobId));
           setBusy(false);
-          void refresh();
+          void refresh(query.trim() || undefined);
           return;
         }
         if (s === "FAILED") {
@@ -129,6 +142,38 @@ export default function Home() {
       setError("Couldn’t open that document.");
     }
   }
+  async function handleDelete(jobId: string) {
+    const target = docs.find((d) => d.jobId === jobId);
+    const ok = window.confirm(
+      `Delete "${target?.filename ?? "this document"}"? This can't be undone.`,
+    );
+    if (!ok) return;
+
+    setDocs((prev) => prev.filter((d) => d.jobId !== jobId));
+    if (selected?.jobId === jobId) setSelected(null);
+
+    try {
+      await deleteDocument(jobId);
+    } catch {
+      setError("Couldn’t delete that document.");
+      void refresh(query.trim() || undefined);
+    }
+  }
+
+  async function handleAsk() {
+    const jobId = selected?.jobId;
+    if (!jobId || jobId === "pending" || !question.trim()) return;
+    setAsking(true);
+    setAskError(null);
+    setAnswer(null);
+    try {
+      setAnswer(await askDocument(jobId, question.trim()));
+    } catch {
+      setAskError("Couldn’t get an answer — is the backend running?");
+    } finally {
+      setAsking(false);
+    }
+  }
 
   const r = selected?.result ?? null;
   const summaryText = r?.summary ?? selected?.summary ?? "";
@@ -163,7 +208,7 @@ export default function Home() {
         <input
           ref={inputRef}
           type="file"
-          accept=".txt,.md,text/plain"
+          accept=".txt,.md,.pdf,text/plain,application/pdf"
           hidden
           onChange={onInputChange}
         />
@@ -192,7 +237,7 @@ export default function Home() {
           <div className="dz-title">
             {busy ? "Analyzing…" : "Drop a document to analyze"}
           </div>
-          <div className="dz-sub">Text file (.txt)</div>
+          <div className="dz-sub">PDF or text file</div>
           <button className="btn" type="button" disabled={busy}>
             Browse files
           </button>
@@ -297,6 +342,64 @@ export default function Home() {
                   </div>
                 </div>
               )}
+              {selected.status.toUpperCase() === "DONE" &&
+                selected.jobId !== "pending" && (
+                  <div className="ask">
+                    <div className="eyebrow">Ask this document</div>
+                    <div className="ask-row">
+                      <input
+                        className="search"
+                        type="text"
+                        placeholder="e.g. What is the payment amount?"
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void handleAsk();
+                        }}
+                        disabled={asking}
+                      />
+                      <button
+                        className="btn"
+                        type="button"
+                        onClick={() => void handleAsk()}
+                        disabled={asking || !question.trim()}
+                      >
+                        {asking ? "Thinking…" : "Ask"}
+                      </button>
+                    </div>
+
+                    {askError && (
+                      <p
+                        style={{
+                          color: "var(--failed)",
+                          marginTop: 10,
+                          fontSize: 14,
+                        }}
+                      >
+                        {askError}
+                      </p>
+                    )}
+
+                    {answer && (
+                      <div className="answer">
+                        <p className="answer-text">{answer.answer}</p>
+                        {answer.sources.length > 0 && (
+                          <div className="sources">
+                            <div className="eyebrow">Sources</div>
+                            {answer.sources.map((s) => (
+                              <div className="source" key={s.chunkIndex}>
+                                <span className="source-tag">
+                                  #{s.chunkIndex}
+                                </span>
+                                <span className="source-text">{s.excerpt}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               {selected.status.toUpperCase() === "DONE" && (
                 <div className="metarow">
@@ -312,6 +415,13 @@ export default function Home() {
             <h2 style={{ fontSize: 16 }}>Recent</h2>
             <span className="meta">{docs.length} documents</span>
           </div>
+          <input
+            className="search"
+            type="text"
+            placeholder="Search by filename or document type…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
 
           {loadingDocs ? (
             <div className="card" style={{ padding: 18 }}>
@@ -325,34 +435,41 @@ export default function Home() {
             </div>
           ) : docs.length === 0 ? (
             <div className="card" style={{ padding: 24, textAlign: "center" }}>
-              <div className="dz-title">No documents yet</div>
-              <div className="dz-sub">Upload one above to get started.</div>
+              <div className="dz-title">
+                {query.trim() ? "No matches" : "No documents yet"}
+              </div>
+              <div className="dz-sub">
+                {query.trim()
+                  ? `Nothing matches “${query.trim()}”.`
+                  : "Upload one above to get started."}
+              </div>
             </div>
           ) : (
             <div className="card list">
               {docs.map((d) => (
-                <button
-                  className="row"
-                  key={d.jobId}
-                  onClick={() => void openDoc(d.jobId)}
-                  style={{
-                    width: "100%",
-                    background: "none",
-                    border: "none",
-                    fontFamily: "inherit",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <span className="row-file">{d.filename}</span>
-                  <span className="row-right">
-                    <span className="meta">{timeAgo(d.createdAt)}</span>
-                    <span className={pillClass(d.status)}>
-                      <span className="dot" />
-                      {statusLabel[d.status.toUpperCase()] ?? d.status}
+                <div className="row" key={d.jobId}>
+                  <button
+                    className="row-open"
+                    onClick={() => void openDoc(d.jobId)}
+                  >
+                    <span className="row-file">{d.filename}</span>
+                    <span className="row-right">
+                      <span className="meta">{timeAgo(d.createdAt)}</span>
+                      <span className={pillClass(d.status)}>
+                        <span className="dot" />
+                        {statusLabel[d.status.toUpperCase()] ?? d.status}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    className="row-del"
+                    title="Delete"
+                    aria-label={`Delete ${d.filename}`}
+                    onClick={() => void handleDelete(d.jobId)}
+                  >
+                    ✕
+                  </button>
+                </div>
               ))}
             </div>
           )}

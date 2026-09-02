@@ -17,3 +17,17 @@ export async function GET(
   const data = (await res.json()) as Analysis;
   return NextResponse.json(data, { status: res.status });
 }
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ jobId: string }> },
+) {
+  const { jobId } = await params;
+  const res = await fetch(`${QUERY_URL}/documents/${jobId}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  if (res.status === 404) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return new NextResponse(null, { status: 204 });
+}

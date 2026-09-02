@@ -23,9 +23,13 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data, { status: res.status });
 }
 
-// List all analyses → reads from query-service
-export async function GET() {
-  const res = await fetch(`${QUERY_URL}/documents`, { cache: "no-store" });
+// List / search analyses → reads from query-service
+export async function GET(req: NextRequest) {
+  const q = req.nextUrl.searchParams.get("q");
+  const url = q
+    ? `${QUERY_URL}/documents?q=${encodeURIComponent(q)}`
+    : `${QUERY_URL}/documents`;
+  const res = await fetch(url, { cache: "no-store" });
   const data = (await res.json()) as Analysis[];
   return NextResponse.json(data, { status: res.status });
 }
