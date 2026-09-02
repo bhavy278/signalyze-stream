@@ -1,0 +1,307 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --paper: #e9e0ca;
+  --paper-2: #e0d5ba;
+  --ink: #211a12;
+  --ink-2: #4f4433;
+  --muted: #8a7c62;
+  --rule: #211a12;
+  --hairline: #b6a888;
+  --accent: #8a2b1e;
+  --gold: #b9975a;
+  --processing: #7a5f16;
+  --done: #43552c;
+  --failed: #8a2b1e;
+  --radius: 2px;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  color: var(--ink);
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 12% 15%, rgba(120, 90, 40, 0.07), transparent 26%),
+    radial-gradient(circle at 88% 28%, rgba(110, 80, 35, 0.06), transparent 24%),
+    radial-gradient(circle at 72% 86%, rgba(90, 65, 25, 0.06), transparent 28%),
+    radial-gradient(circle at 28% 72%, rgba(90, 65, 25, 0.05), transparent 22%),
+    repeating-linear-gradient(0deg,
+      transparent,
+      transparent 3px,
+      rgba(33, 26, 18, 0.015) 3px,
+      rgba(33, 26, 18, 0.015) 4px);
+  background-attachment: fixed;
+}
+
+/* Grain over everything — ink + paper share the same tooth */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.19;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Aged vignette */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  background: radial-gradient(135% 105% at 50% 40%, transparent 52%, rgba(55, 40, 20, 0.16) 100%);
+}
+
+/* Headlines — fat Victorian display */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), "Abril Fatface", Georgia, serif;
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: 0;
+  margin: 0;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+button {
+  font-family: var(--font-condensed), system-ui, sans-serif;
+  cursor: pointer;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Condensed gothic labels / kickers / decks */
+.kicker {
+  font-family: var(--font-condensed), sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.label {
+  font-family: var(--font-condensed), sans-serif;
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.byline {
+  font-family: var(--font-condensed), sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.deck {
+  font-family: var(--font-serif), serif;
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+/* Rules */
+.rule {
+  border: 0;
+  border-top: 1.5px solid var(--rule);
+  margin: 0;
+}
+
+.rule--hair {
+  border-top: 1px solid var(--hairline);
+}
+
+.rule--double {
+  border: 0;
+  border-top: 4px double var(--rule);
+}
+
+.rule--thick {
+  border: 0;
+  border-top: 5px solid var(--rule);
+}
+
+/* Masthead */
+.masthead {
+  text-align: center;
+}
+
+.masthead h1 {
+  font-family: var(--font-masthead), serif;
+  font-weight: 700;
+  font-size: clamp(56px, 12vw, 124px);
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+}
+
+.banner-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 4px double var(--rule);
+  border-bottom: 4px double var(--rule);
+  padding: 7px 2px;
+  font-family: var(--font-condensed), sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.banner-bar .center {
+  font-weight: 600;
+  letter-spacing: 0.22em;
+}
+
+/* Circular seal / badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 76px;
+  height: 76px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  font-family: var(--font-condensed), sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  padding: 6px;
+}
+
+/* Column rules */
+.rail {
+  border-left: 1.5px solid var(--rule);
+}
+
+/* Article body */
+.article {
+  font-size: 17px;
+  line-height: 1.6;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.lead::first-letter {
+  font-family: var(--font-masthead), serif;
+  font-weight: 700;
+  float: left;
+  font-size: 4.4em;
+  line-height: 0.7;
+  padding: 8px 12px 0 0;
+  color: var(--ink);
+}
+
+/* Ornaments */
+.ornament {
+  text-align: center;
+  font-size: 20px;
+  letter-spacing: 0.4em;
+  color: var(--ink);
+  padding: 4px 0;
+}
+
+/* Classified ad box */
+.adbox {
+  border: 2px solid var(--ink);
+  padding: 16px 16px 18px;
+  text-align: center;
+}
+
+.adhead {
+  font-family: var(--font-display), serif;
+  font-size: 26px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.adbtn {
+  font-family: var(--font-condensed), sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  border: 0;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.adbtn:hover {
+  background: var(--accent);
+}
+
+/* Status stamps */
+.stamp {
+  font-family: var(--font-condensed), sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--radius);
+}
+
+.stamp--processing {
+  color: var(--processing);
+}
+
+.stamp--done {
+  color: var(--done);
+}
+
+.stamp--failed {
+  color: var(--failed);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

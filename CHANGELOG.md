@@ -16,3 +16,4 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - Redis-based rate limiting on the upload endpoint (5 uploads/min per IP).
 - Dockerized all three services (multi-stage builds); the full stack (Kafka, Redis, services) runs via `docker compose up`.
 - Real AI analysis: processing-service calls OpenAI (gpt-4o-mini) to generate document summaries, replacing the mock; document text now flows through the pipeline.
+- Next.js frontend (web/) with a vintage-newspaper design system: blackletter masthead, Abril Fatface headlines, Oswald labels, Old Standard TT body, aged-paper grain texture.
