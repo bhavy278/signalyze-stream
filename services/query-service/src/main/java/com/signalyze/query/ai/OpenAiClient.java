@@ -16,9 +16,9 @@ public class OpenAiClient {
     private final String embeddingModel;
 
     public OpenAiClient(@Value("${openai.api-key}") String apiKey,
-            @Value("${openai.base-url}") String baseUrl,
-            @Value("${openai.model}") String chatModel,
-            @Value("${openai.embedding-model}") String embeddingModel) {
+                        @Value("${openai.base-url}") String baseUrl,
+                        @Value("${openai.model}") String chatModel,
+                        @Value("${openai.embedding-model}") String embeddingModel) {
         this.chatModel = chatModel;
         this.embeddingModel = embeddingModel;
         this.restClient = RestClient.builder()
@@ -40,17 +40,13 @@ public class OpenAiClient {
         }
         List<Double> vec = res.data().get(0).embedding();
         float[] arr = new float[vec.size()];
-        for (int i = 0; i < arr.length; i++)
-            arr[i] = vec.get(i).floatValue();
+        for (int i = 0; i < arr.length; i++) arr[i] = vec.get(i).floatValue();
         return arr;
     }
 
-    public String chat(String system, String user) {
-        Map<String, Object> body = Map.of(
-                "model", chatModel,
-                "messages", List.of(
-                        Map.of("role", "system", "content", system),
-                        Map.of("role", "user", "content", user)));
+    /** Chat completion over a full message list (system + prior turns + new question). */
+    public String chat(List<Map<String, String>> messages) {
+        Map<String, Object> body = Map.of("model", chatModel, "messages", messages);
         ChatResponse res = restClient.post()
                 .uri("/chat/completions")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -63,18 +59,9 @@ public class OpenAiClient {
         return res.choices().get(0).message().content();
     }
 
-    public record EmbeddingResponse(List<Item> data) {
-    }
-
-    public record Item(List<Double> embedding) {
-    }
-
-    public record ChatResponse(List<Choice> choices) {
-    }
-
-    public record Choice(Message message) {
-    }
-
-    public record Message(String content) {
-    }
+    public record EmbeddingResponse(List<Item> data) {}
+    public record Item(List<Double> embedding) {}
+    public record ChatResponse(List<Choice> choices) {}
+    public record Choice(Message message) {}
+    public record Message(String content) {}
 }
