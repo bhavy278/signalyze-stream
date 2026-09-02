@@ -1,5 +1,6 @@
 import type { Analysis } from "@/lib/types";
 import { pillClass, sevClass, statusLabel } from "@/lib/format";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function AnalysisReport({ selected }: { selected: Analysis }) {
   const r = selected.result ?? null;
@@ -31,7 +32,22 @@ export default function AnalysisReport({ selected }: { selected: Analysis }) {
       </div>
 
       {status === "PROCESSING" && (
-        <p style={{ marginTop: 14, color: "var(--muted)" }}>Analyzing the document…</p>
+        <div style={{ marginTop: 16 }}>
+          <p style={{ color: "var(--muted)", marginBottom: 16 }}>
+            Analyzing the document…
+          </p>
+          <Skeleton w="88%" h={12} style={{ marginBottom: 9 }} />
+          <Skeleton w="76%" h={12} style={{ marginBottom: 9 }} />
+          <Skeleton w="54%" h={12} />
+          <div className="terms" style={{ marginTop: 18 }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div className="term" key={i}>
+                <Skeleton w="44%" h={10} style={{ marginBottom: 9 }} />
+                <Skeleton w="72%" h={14} />
+              </div>
+            ))}
+          </div>
+        </div>
       )}
       {status === "FAILED" && (
         <p style={{ marginTop: 14, color: "var(--failed)" }}>

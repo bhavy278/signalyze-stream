@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Plus, Upload } from "lucide-react";
+import { motion } from "framer-motion";
 import type { Analysis } from "@/lib/types";
 import { getAnalysis, getStatus, uploadDocument } from "@/lib/api";
 import AnalysisView from "@/components/AnalysisView";
@@ -127,7 +128,11 @@ export default function Home() {
       )}
 
       {selected && (
-        <section>
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+        >
           <div className="section-head">
             <h2 style={{ fontSize: 16 }}>Analysis</h2>
             <button className="btn btn-sm" type="button" onClick={reset}>
@@ -136,7 +141,7 @@ export default function Home() {
             </button>
           </div>
           <AnalysisView selected={selected} />
-        </section>
+        </motion.section>
       )}
     </main>
   );

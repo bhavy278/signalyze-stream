@@ -5,6 +5,8 @@ import type { Analysis, DocumentPage } from "@/lib/types";
 import { deleteDocument, getAnalysis, listDocuments } from "@/lib/api";
 import { pillClass, statusLabel, timeAgo } from "@/lib/format";
 import { ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Skeleton } from "@/components/Skeleton";
 import AnalysisReport from "@/components/AnalysisReport";
 import DocumentChat from "@/components/DocumentChat";
 
@@ -90,10 +92,15 @@ export default function DocumentsPage() {
           Back to documents
         </button>
 
-        <div className="doc-split">
+        <motion.div
+          className="doc-split"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+        >
           <AnalysisReport selected={selected} />
           <DocumentChat selected={selected} />
-        </div>
+        </motion.div>
       </main>
     );
   }
@@ -133,8 +140,17 @@ export default function DocumentsPage() {
         )}
 
         {loadingDocs ? (
-          <div className="card" style={{ padding: 18 }}>
-            <span className="meta">Loading…</span>
+          <div className="card list">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                className="row"
+                key={i}
+                style={{ padding: "15px 20px", justifyContent: "space-between" }}
+              >
+                <Skeleton w="42%" h={14} />
+                <Skeleton w={70} h={14} />
+              </div>
+            ))}
           </div>
         ) : docsError ? (
           <div className="card" style={{ padding: 18 }}>
