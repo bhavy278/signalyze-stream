@@ -4,29 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { Analysis, DocumentPage } from "@/lib/types";
 import { deleteDocument, getAnalysis, listDocuments } from "@/lib/api";
 import { pillClass, statusLabel, timeAgo } from "@/lib/format";
+import { ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import AnalysisReport from "@/components/AnalysisReport";
 import DocumentChat from "@/components/DocumentChat";
 
 const PAGE_SIZE = 8;
-
-function BackIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m12 19-7-7 7-7" />
-      <path d="M19 12H5" />
-    </svg>
-  );
-}
 
 export default function DocumentsPage() {
   const [pageData, setPageData] = useState<DocumentPage | null>(null);
@@ -104,7 +86,7 @@ export default function DocumentsPage() {
           onClick={() => setSelected(null)}
           style={{ marginBottom: 20 }}
         >
-          <BackIcon />
+          <ArrowLeft size={15} />
           Back to documents
         </button>
 
@@ -190,7 +172,7 @@ export default function DocumentsPage() {
                     aria-label={`Delete ${d.filename}`}
                     onClick={() => void handleDelete(d.jobId)}
                   >
-                    ✕
+                    <Trash2 size={15} />
                   </button>
                 </div>
               ))}
@@ -204,7 +186,8 @@ export default function DocumentsPage() {
                   disabled={page <= 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                 >
-                  ← Prev
+                  <ChevronLeft size={16} />
+                  Prev
                 </button>
                 <span className="meta">
                   Page {page + 1} of {totalPages}
@@ -215,7 +198,8 @@ export default function DocumentsPage() {
                   disabled={page >= totalPages - 1}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  Next →
+                  Next
+                  <ChevronRight size={16} />
                 </button>
               </div>
             )}

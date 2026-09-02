@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MorphIcon } from "morphicons/react";
+import { LoaderCircle, Send } from "lucide";
 import type { Analysis, ChatMessage } from "@/lib/types";
 import { askDocument, getChat } from "@/lib/api";
 
@@ -97,8 +99,19 @@ export default function DocumentChat({ selected }: { selected: Analysis }) {
           onChange={(e) => setQuestion(e.target.value)}
           disabled={asking}
         />
-        <button className="btn" type="submit" disabled={asking || !question.trim()}>
-          Ask
+        <button
+          className="send-btn"
+          type="submit"
+          disabled={asking || !question.trim()}
+          aria-label="Send"
+        >
+          <MorphIcon
+            icon={asking ? LoaderCircle : Send}
+            size={18}
+            color="#fff"
+            strokeWidth={2}
+            className={asking ? "spin" : undefined}
+          />
         </button>
       </form>
 
