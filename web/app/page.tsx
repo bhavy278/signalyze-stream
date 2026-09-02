@@ -1,29 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Plus, Upload } from "lucide-react";
 import type { Analysis } from "@/lib/types";
 import { getAnalysis, getStatus, uploadDocument } from "@/lib/api";
 import AnalysisView from "@/components/AnalysisView";
-
-function UploadIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" x2="12" y1="3" y2="15" />
-    </svg>
-  );
-}
 
 export default function Home() {
   const [selected, setSelected] = useState<Analysis | null>(null);
@@ -128,7 +109,7 @@ export default function Home() {
             style={{ cursor: busy ? "default" : "pointer", opacity: busy ? 0.75 : 1 }}
           >
             <div className="dz-icon">
-              <UploadIcon />
+              <Upload size={22} />
             </div>
             <div className="dz-title">
               {busy ? "Analyzing…" : "Drop a document to analyze"}
@@ -150,7 +131,7 @@ export default function Home() {
           <div className="section-head">
             <h2 style={{ fontSize: 16 }}>Analysis</h2>
             <button className="btn btn-sm" type="button" onClick={reset}>
-              <UploadIcon />
+              <Plus size={15} />
               New
             </button>
           </div>

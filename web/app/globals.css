@@ -901,3 +901,43 @@ a:hover {
 .pager .btn:disabled {
   opacity: 0.45;
 }
+
+/* Chat send button (morphing icon) */
+.send-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.send-btn:hover {
+  background: var(--accent-ink);
+}
+
+.send-btn:active {
+  transform: translateY(0.5px);
+}
+
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
