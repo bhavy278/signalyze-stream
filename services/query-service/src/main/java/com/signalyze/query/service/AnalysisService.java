@@ -51,4 +51,13 @@ public class AnalysisService {
         });
         return found;
     }
+
+    public boolean delete(String jobId) {
+        boolean existed = repository.existsById(jobId);
+        repository.deleteById(jobId);
+        redis.delete(CACHE_PREFIX + jobId);
+        redis.delete("status:" + jobId);
+        log.info("Deleted jobId={} (existed={})", jobId, existed);
+        return existed;
+    }
 }

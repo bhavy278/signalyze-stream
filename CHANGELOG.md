@@ -19,3 +19,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - Next.js frontend (web/) with a vintage-newspaper design system: blackletter masthead, Abril Fatface headlines, Oswald labels, Old Standard TT body, aged-paper grain texture.
 - Functional frontend: dropzone upload → status polling → analysis, wired to the backend through Next.js API routes (typed client + route handlers), with loading/empty/error states.
 - Structured analysis: AI now returns document type, parties, key terms, and risk-flagged clauses (severity-rated), rendered as a report in the UI.
+- PDF text extraction on ingest via Apache PDFBox
+- Document deletion (removes the MongoDB record and its Redis cache/status keys)
+- Archive search by filename or document type (MongoDB regex query on an embedded field)
+- Ask the document: RAG Q&A — chunking, OpenAI embeddings, in-app cosine retrieval, and answers grounded in cited excerpts
