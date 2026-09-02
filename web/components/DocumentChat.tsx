@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MorphIcon } from "morphicons/react";
 import { LoaderCircle, Send } from "lucide";
+import { motion } from "framer-motion";
 import type { Analysis, ChatMessage } from "@/lib/types";
 import { askDocument, getChat } from "@/lib/api";
 
@@ -71,7 +72,13 @@ export default function DocumentChat({ selected }: { selected: Analysis }) {
         )}
 
         {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "msg msg--user" : "msg msg--ai"}>
+          <motion.div
+            key={i}
+            className={m.role === "user" ? "msg msg--user" : "msg msg--ai"}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
             <div className="bubble">{m.content}</div>
             {m.role === "assistant" && m.sources && m.sources.length > 0 && (
               <div className="msg-sources">
@@ -84,7 +91,7 @@ export default function DocumentChat({ selected }: { selected: Analysis }) {
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
         ))}
 
         {asking && <div className="typing">Thinking…</div>}
