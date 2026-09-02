@@ -1,169 +1,299 @@
-export default function Home() {
-  return (
-    <main
-      style={{
-        maxWidth: 1000,
-        margin: "0 auto",
-        padding: "28px 26px 80px",
-      }}
-    >
-      {/* ===== Masthead ===== */}
-      <header className="masthead">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "76px 1fr 76px",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <span className="badge">
-            Est.
-            <br />
-            2026
-            <br />
-            N.Y.
-          </span>
-          <div>
-            <h1>Signalyze</h1>
-            <p
-              style={{
-                fontFamily: "var(--font-serif)",
-                fontStyle: "italic",
-                color: "var(--ink-2)",
-                fontSize: 18,
-                marginTop: 2,
-              }}
-            >
-              “The fine print, read for you.”
-            </p>
-          </div>
-          <span className="badge">
-            Vol.
-            <br />I
-          </span>
-        </div>
+"use client";
 
-        <div className="banner-bar" style={{ marginTop: 14 }}>
-          <span>☞ Two Cents</span>
-          <span className="center">The Signalyze Family Ledger</span>
-          <span>Est. MMXXVI ☜</span>
-        </div>
-        <div
-          className="label"
-          style={{ padding: "8px 0", letterSpacing: "0.2em" }}
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Analysis } from "@/lib/types";
+import {
+  getAnalysis,
+  getStatus,
+  listDocuments,
+  uploadDocument,
+} from "@/lib/api";
+
+const statusLabel: Record<string, string> = {
+  PROCESSING: "Processing",
+  DONE: "Done",
+  FAILED: "Failed",
+};
+
+function pillClass(status: string): string {
+  const s = status.toUpperCase();
+  if (s === "DONE") return "pill pill--done";
+  if (s === "FAILED") return "pill pill--failed";
+  return "pill pill--processing";
+}
+
+function timeAgo(iso: string): string {
+  const s = Math.max(
+    1,
+    Math.floor((Date.now() - new Date(iso).getTime()) / 1000),
+  );
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+export default function Home() {
+  const [docs, setDocs] = useState<Analysis[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [docsError, setDocsError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Analysis | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const list = await listDocuments();
+      list.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+      setDocs(list);
+      setDocsError(null);
+    } catch {
+      setDocsError("Couldn’t load documents.");
+    } finally {
+      setLoadingDocs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  async function handleFile(file: File) {
+    setError(null);
+    setBusy(true);
+    setSelected({
+      jobId: "pending",
+      filename: file.name,
+      status: "PROCESSING",
+      summary: "",
+      createdAt: new Date().toISOString(),
+    });
+
+    try {
+      const { jobId } = await uploadDocument(file);
+      let attempts = 0;
+
+      const poll = async (): Promise<void> => {
+        attempts += 1;
+        const { status } = await getStatus(jobId);
+        const s = status.toUpperCase();
+
+        if (s === "DONE") {
+          setSelected(await getAnalysis(jobId));
+          setBusy(false);
+          void refresh();
+          return;
+        }
+        if (s === "FAILED") {
+          setSelected((prev) =>
+            prev ? { ...prev, jobId, status: "FAILED" } : prev,
+          );
+          setBusy(false);
+          return;
+        }
+        if (attempts > 40) {
+          setError("Analysis timed out.");
+          setBusy(false);
+          return;
+        }
+        setTimeout(() => void poll(), 1500);
+      };
+
+      setTimeout(() => void poll(), 1500);
+    } catch {
+      setError("Upload failed — is the backend running?");
+      setBusy(false);
+      setSelected(null);
+    }
+  }
+
+  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) void handleFile(file);
+    e.target.value = "";
+  }
+
+  async function openDoc(jobId: string) {
+    try {
+      setSelected(await getAnalysis(jobId));
+    } catch {
+      setError("Couldn’t open that document.");
+    }
+  }
+
+  return (
+    <div>
+      <header className="topbar">
+        <span className="brand">
+          <span className="brand-dot" /> Signalyze
+        </span>
+        <button
+          className="btn btn-sm"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
         >
-          Monday Edition · New York · Analysis Rendered While You Wait
-        </div>
-        <hr className="rule" />
+          New analysis
+        </button>
       </header>
 
-      {/* ===== Two-column front page ===== */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 280px",
-          gap: 30,
-          marginTop: 28,
-        }}
-      >
-        {/* Lead story */}
-        <article>
-          <div className="kicker">Analysis · Lead Story</div>
-          <h2 style={{ fontSize: "clamp(34px, 5.6vw, 60px)", marginTop: 6 }}>
-            Service Agreement Binds Client to $5,000 Monthly, Thirty-Day Exit
-          </h2>
-          <p className="deck" style={{ marginTop: 10 }}>
-            Late payments to incur five percent penalty; unusual clause exposes
-            client to six-figure liability.
+      <main className="wrap">
+        <section>
+          <div className="eyebrow">AI Document Analysis</div>
+          <h1 style={{ fontSize: 38, marginTop: 12 }}>
+            Understand any document in seconds.
+          </h1>
+          <p className="lead">
+            Upload a contract or agreement and get a clear, structured summary —
+            key obligations, terms, and the clauses worth a second look.
           </p>
-          <div className="byline" style={{ marginTop: 12 }}>
-            Filed by GPT-4o-mini · 2:31 P.M. · contract.txt
+        </section>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".txt,.md,text/plain"
+          hidden
+          onChange={onInputChange}
+        />
+
+        <div
+          className="dropzone"
+          role="button"
+          tabIndex={0}
+          onClick={() => !busy && inputRef.current?.click()}
+          onKeyDown={(e) => {
+            if ((e.key === "Enter" || e.key === " ") && !busy)
+              inputRef.current?.click();
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files?.[0];
+            if (file && !busy) void handleFile(file);
+          }}
+          style={{
+            cursor: busy ? "default" : "pointer",
+            opacity: busy ? 0.75 : 1,
+          }}
+        >
+          <div className="dz-icon">↑</div>
+          <div className="dz-title">
+            {busy ? "Analyzing…" : "Drop a document to analyze"}
           </div>
-          <hr className="rule--hair" style={{ margin: "14px 0" }} />
-          <p className="lead article">
-            This Service Agreement outlines the terms between Acme Corp and the
-            Client, including payment obligations and termination conditions.
-            Key obligations include a commitment to pay five thousand dollars
-            monthly and a requirement for thirty days written notice for
-            termination from either party. Of note: a five percent fee on late
-            payments, and an unusual clause holding the Client liable for
-            damages exceeding one hundred thousand dollars in cases of misuse.
+          <div className="dz-sub">Text file (.txt)</div>
+          <button className="btn" type="button" disabled={busy}>
+            Browse files
+          </button>
+        </div>
+
+        {error && (
+          <p style={{ color: "var(--failed)", marginTop: 12, fontSize: 14 }}>
+            {error}
           </p>
+        )}
 
-          <div className="ornament" style={{ marginTop: 18 }}>
-            ⁂
-          </div>
-        </article>
-
-        {/* Sidebar */}
-        <aside className="rail" style={{ paddingLeft: 24 }}>
-          <div className="label" style={{ color: "var(--accent)" }}>
-            The Archive
-          </div>
-          <hr className="rule" style={{ margin: "8px 0 12px" }} />
-          <ul
-            style={{
-              listStyle: "none",
-              margin: 0,
-              padding: 0,
-              display: "grid",
-              gap: 12,
-            }}
-          >
-            {[
-              ["lease-2019.pdf", "Filed"],
-              ["nda-draft.txt", "On the wire"],
-              ["invoice-Q3.pdf", "Filed"],
-            ].map(([name, status]) => (
-              <li key={name}>
-                <div
-                  style={{ fontFamily: "var(--font-serif)", fontWeight: 700 }}
-                >
-                  {name}
+        {selected && (
+          <section style={{ marginTop: 44 }}>
+            <div className="section-head">
+              <h2 style={{ fontSize: 16 }}>Analysis</h2>
+            </div>
+            <div className="card" style={{ padding: 24 }}>
+              <div className="row-between">
+                <div>
+                  <div className="meta">{selected.filename}</div>
+                  <h3 style={{ fontSize: 18, marginTop: 6 }}>Summary</h3>
                 </div>
-                <div className="byline">{status}</div>
-              </li>
-            ))}
-          </ul>
+                <span className={pillClass(selected.status)}>
+                  <span className="dot" />
+                  {statusLabel[selected.status.toUpperCase()] ??
+                    selected.status}
+                </span>
+              </div>
 
-          <div className="adbox" style={{ marginTop: 24 }}>
-            <div
-              className="label"
-              style={{ color: "var(--accent)", marginBottom: 6 }}
-            >
-              Advertisement
+              {selected.status.toUpperCase() === "PROCESSING" && (
+                <p style={{ marginTop: 14, color: "var(--muted)" }}>
+                  Analyzing the document…
+                </p>
+              )}
+              {selected.status.toUpperCase() === "FAILED" && (
+                <p style={{ marginTop: 14, color: "var(--failed)" }}>
+                  Analysis failed for this document.
+                </p>
+              )}
+              {selected.summary && (
+                <p
+                  style={{
+                    marginTop: 14,
+                    color: "var(--ink-2)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {selected.summary}
+                </p>
+              )}
+              {selected.status.toUpperCase() === "DONE" && (
+                <div className="metarow">
+                  gpt-4o-mini · {new Date(selected.createdAt).toLocaleString()}
+                </div>
+              )}
             </div>
-            <div className="adhead">Read It For Me!</div>
-            <p
-              style={{
-                fontSize: 14,
-                color: "var(--ink-2)",
-                margin: "6px 0 14px",
-              }}
-            >
-              Submit any contract or document. A full analysis rendered in
-              seconds. No obligation!
-            </p>
-            <button className="adbtn">☞ Submit a Document</button>
+          </section>
+        )}
+
+        <section style={{ marginTop: 44 }}>
+          <div className="section-head">
+            <h2 style={{ fontSize: 16 }}>Recent</h2>
+            <span className="meta">{docs.length} documents</span>
           </div>
 
-          <div style={{ marginTop: 24 }}>
-            <div className="label">Wire Status</div>
-            <hr className="rule--hair" style={{ margin: "8px 0 10px" }} />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span className="stamp stamp--processing">On the wire</span>
-              <span className="stamp stamp--done">Filed</span>
-              <span className="stamp stamp--failed">Spiked</span>
+          {loadingDocs ? (
+            <div className="card" style={{ padding: 18 }}>
+              <span className="meta">Loading…</span>
             </div>
-          </div>
-        </aside>
-      </div>
-
-      <hr className="rule--double" style={{ marginTop: 28 }} />
-      <div className="label" style={{ textAlign: "center", padding: "10px 0" }}>
-        Printed &amp; Filed by Signalyze · MMXXVI · All Clauses Reserved
-      </div>
-    </main>
+          ) : docsError ? (
+            <div className="card" style={{ padding: 18 }}>
+              <span style={{ color: "var(--failed)", fontSize: 14 }}>
+                {docsError}
+              </span>
+            </div>
+          ) : docs.length === 0 ? (
+            <div className="card" style={{ padding: 24, textAlign: "center" }}>
+              <div className="dz-title">No documents yet</div>
+              <div className="dz-sub">Upload one above to get started.</div>
+            </div>
+          ) : (
+            <div className="card list">
+              {docs.map((d) => (
+                <button
+                  className="row"
+                  key={d.jobId}
+                  onClick={() => void openDoc(d.jobId)}
+                  style={{
+                    width: "100%",
+                    background: "none",
+                    border: "none",
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <span className="row-file">{d.filename}</span>
+                  <span className="row-right">
+                    <span className="meta">{timeAgo(d.createdAt)}</span>
+                    <span className={pillClass(d.status)}>
+                      <span className="dot" />
+                      {statusLabel[d.status.toUpperCase()] ?? d.status}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
   );
 }
