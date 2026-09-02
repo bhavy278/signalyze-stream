@@ -3,6 +3,9 @@ package com.signalyze.ingest.web;
 import com.signalyze.ingest.config.KafkaTopicsConfig;
 import com.signalyze.ingest.event.DocumentUploaded;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,6 +30,7 @@ public class DocumentController {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentController.class);
     private static final int MAX_UPLOADS_PER_MINUTE = 5;
+    private static final int MAX_CONTENT_CHARS = 30_000;
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final StringRedisTemplate redis;
@@ -51,7 +55,11 @@ public class DocumentController {
         }
 
         String jobId = UUID.randomUUID().toString();
-        String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+        String content = extractText(file);
+        if (content.length() > MAX_CONTENT_CHARS) {
+            content = content.substring(0, MAX_CONTENT_CHARS);
+        }
+
         DocumentUploaded event =
                 DocumentUploaded.of(jobId, file.getOriginalFilename(), file.getSize(), content);
 
@@ -61,5 +69,21 @@ public class DocumentController {
 
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(Map.of("jobId", jobId, "status", "PROCESSING"));
+    }
+
+    private String extractText(MultipartFile file) throws IOException {
+        if (isPdf(file)) {
+            try (PDDocument doc = Loader.loadPDF(file.getBytes())) {
+                return new PDFTextStripper().getText(doc);
+            }
+        }
+        return new String(file.getBytes(), StandardCharsets.UTF_8);
+    }
+
+    private boolean isPdf(MultipartFile file) {
+        String type = file.getContentType();
+        String name = file.getOriginalFilename();
+        return "application/pdf".equalsIgnoreCase(type)
+                || (name != null && name.toLowerCase().endsWith(".pdf"));
     }
 }
