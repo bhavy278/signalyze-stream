@@ -37,3 +37,13 @@ export interface StatusResponse {
   jobId: string;
   status: string;
 }
+
+export interface AskSource {
+  chunkIndex: number;
+  excerpt: string;
+}
+
+export interface AskResponse {
+  answer: string;
+  sources: AskSource[];
+}
