@@ -71,3 +71,11 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
       - redis
+  auth-service:
+    build: ./services/auth-service
+    container_name: signalyze-auth
+    ports:
+      - "8084:8084"
+    environment:
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import AuthProvider from "@/components/AuthProvider";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import "./globals.css";
@@ -29,9 +30,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${jakarta.variable} ${geistMono.variable}`}>
       <body>
-        <Nav />
-        {children}
-        <Footer />
+        <AuthProvider>
+          <Nav />
+          {children}
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
