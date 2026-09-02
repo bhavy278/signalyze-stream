@@ -22,6 +22,13 @@ function pillClass(status: string): string {
   return "pill pill--processing";
 }
 
+function sevClass(severity: string): string {
+  const s = (severity || "low").toLowerCase();
+  if (s === "high") return "sev sev--high";
+  if (s === "medium") return "sev sev--medium";
+  return "sev sev--low";
+}
+
 function timeAgo(iso: string): string {
   const s = Math.max(
     1,
@@ -68,7 +75,6 @@ export default function Home() {
       jobId: "pending",
       filename: file.name,
       status: "PROCESSING",
-      summary: "",
       createdAt: new Date().toISOString(),
     });
 
@@ -124,6 +130,9 @@ export default function Home() {
     }
   }
 
+  const r = selected?.result ?? null;
+  const summaryText = r?.summary ?? selected?.summary ?? "";
+
   return (
     <div>
       <header className="topbar">
@@ -146,8 +155,8 @@ export default function Home() {
             Understand any document in seconds.
           </h1>
           <p className="lead">
-            Upload a contract or agreement and get a clear, structured summary —
-            key obligations, terms, and the clauses worth a second look.
+            Upload a contract or agreement and get a structured breakdown —
+            parties, key terms, and the risky clauses worth a second look.
           </p>
         </section>
 
@@ -204,7 +213,25 @@ export default function Home() {
               <div className="row-between">
                 <div>
                   <div className="meta">{selected.filename}</div>
-                  <h3 style={{ fontSize: 18, marginTop: 6 }}>Summary</h3>
+                  <h3 style={{ fontSize: 18, marginTop: 6 }}>
+                    {r?.documentType || "Summary"}
+                  </h3>
+                  {r?.parties && r.parties.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 6,
+                        flexWrap: "wrap",
+                        marginTop: 8,
+                      }}
+                    >
+                      {r.parties.map((p) => (
+                        <span className="chip" key={p}>
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <span className={pillClass(selected.status)}>
                   <span className="dot" />
@@ -223,17 +250,54 @@ export default function Home() {
                   Analysis failed for this document.
                 </p>
               )}
-              {selected.summary && (
+
+              {summaryText && (
                 <p
                   style={{
-                    marginTop: 14,
+                    marginTop: 16,
                     color: "var(--ink-2)",
                     lineHeight: 1.6,
                   }}
                 >
-                  {selected.summary}
+                  {summaryText}
                 </p>
               )}
+
+              {r?.keyTerms && r.keyTerms.length > 0 && (
+                <>
+                  <div className="eyebrow" style={{ marginTop: 22 }}>
+                    Key Terms
+                  </div>
+                  <div className="terms">
+                    {r.keyTerms.map((t) => (
+                      <div className="term" key={t.label}>
+                        <div className="k">{t.label}</div>
+                        <div className="v">{t.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {r?.risks && r.risks.length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                  <div className="eyebrow">Risk Flags</div>
+                  <div style={{ marginTop: 6 }}>
+                    {r.risks.map((risk, i) => (
+                      <div className="risk" key={`${risk.title}-${i}`}>
+                        <span className={sevClass(risk.severity)}>
+                          {risk.severity}
+                        </span>
+                        <div>
+                          <div className="rtitle">{risk.title}</div>
+                          <div className="rdetail">{risk.detail}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {selected.status.toUpperCase() === "DONE" && (
                 <div className="metarow">
                   gpt-4o-mini · {new Date(selected.createdAt).toLocaleString()}

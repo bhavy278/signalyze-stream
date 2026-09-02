@@ -1,10 +1,30 @@
 export type JobStatus = "PROCESSING" | "DONE" | "FAILED";
 
+export interface KeyTerm {
+  label: string;
+  value: string;
+}
+
+export interface Risk {
+  severity: string; // HIGH | MEDIUM | LOW
+  title: string;
+  detail: string;
+}
+
+export interface AnalysisResult {
+  documentType?: string;
+  parties?: string[];
+  summary?: string;
+  keyTerms?: KeyTerm[];
+  risks?: Risk[];
+}
+
 export interface Analysis {
   jobId: string;
   filename: string;
   status: string;
-  summary: string;
+  summary?: string;
+  result?: AnalysisResult | null;
   createdAt: string;
 }
 

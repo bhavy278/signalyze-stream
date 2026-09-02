@@ -1,9 +1,10 @@
 package com.signalyze.processing.model;
 
-import java.time.Instant;
-
+import com.signalyze.processing.ai.AnalysisResult;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.Instant;
 
 @Document(collection = "analyses")
 public class Analysis {
@@ -13,57 +14,27 @@ public class Analysis {
     private String filename;
     private String status;
     private String summary;
+    private AnalysisResult result;
     private Instant createdAt;
 
     public Analysis() {
     }
 
-    public Analysis(String jobId, String filename, String status, String summary, Instant createdAt) {
-        this.jobId = jobId;
-        this.filename = filename;
-        this.status = status;
-        this.summary = summary;
-        this.createdAt = createdAt;
-    }
+    public String getJobId() { return jobId; }
+    public void setJobId(String jobId) { this.jobId = jobId; }
 
-    public String getJobId() {
-        return jobId;
-    }
+    public String getFilename() { return filename; }
+    public void setFilename(String filename) { this.filename = filename; }
 
-    public void setJobId(String jobId) {
-        this.jobId = jobId;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public String getFilename() {
-        return filename;
-    }
+    public String getSummary() { return summary; }
+    public void setSummary(String summary) { this.summary = summary; }
 
-    public void setFilename(String filename) {
-        this.filename = filename;
-    }
+    public AnalysisResult getResult() { return result; }
+    public void setResult(AnalysisResult result) { this.result = result; }
 
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getSummary() {
-        return summary;
-    }
-
-    public void setSummary(String summary) {
-        this.summary = summary;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

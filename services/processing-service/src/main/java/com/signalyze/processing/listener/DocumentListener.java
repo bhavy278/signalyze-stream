@@ -1,6 +1,7 @@
 package com.signalyze.processing.listener;
 
 import com.signalyze.processing.ai.AiSummarizer;
+import com.signalyze.processing.ai.AnalysisResult;
 import com.signalyze.processing.event.DocumentProcessed;
 import com.signalyze.processing.event.DocumentUploaded;
 import com.signalyze.processing.model.Analysis;
@@ -45,16 +46,22 @@ public class DocumentListener {
             throw new RuntimeException("Simulated processing failure for " + event.filename());
         }
 
-        String summary = aiSummarizer.summarize(event.filename(), event.content());
-        log.info("AI summary generated jobId={}", event.jobId());
+        AnalysisResult result = aiSummarizer.analyze(event.filename(), event.content());
+        log.info("AI analysis generated jobId={} type={}", event.jobId(), result.documentType());
 
-        Analysis analysis = new Analysis(event.jobId(), event.filename(), "DONE", summary, Instant.now());
+        Analysis analysis = new Analysis();
+        analysis.setJobId(event.jobId());
+        analysis.setFilename(event.filename());
+        analysis.setStatus("DONE");
+        analysis.setSummary(result.summary());
+        analysis.setResult(result);
+        analysis.setCreatedAt(Instant.now());
         analysisRepository.save(analysis);
+
         redis.opsForValue().set("status:" + event.jobId(), "DONE", Duration.ofHours(1));
         log.info("Saved analysis + set status=DONE jobId={}", event.jobId());
 
-        DocumentProcessed processed = DocumentProcessed.done(event.jobId(), summary);
+        DocumentProcessed processed = DocumentProcessed.done(event.jobId(), result.summary());
         kafkaTemplate.send(DOCUMENT_PROCESSED, event.jobId(), processed);
-        log.info("Published DocumentProcessed jobId={} status=DONE", event.jobId());
     }
 }
