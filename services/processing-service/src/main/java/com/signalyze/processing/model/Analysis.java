@@ -11,6 +11,7 @@ public class Analysis {
 
     @Id
     private String jobId;
+    private String userId;
     private String filename;
     private String status;
     private String summary;
@@ -22,6 +23,9 @@ public class Analysis {
 
     public String getJobId() { return jobId; }
     public void setJobId(String jobId) { this.jobId = jobId; }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
     public String getFilename() { return filename; }
     public void setFilename(String filename) { this.filename = filename; }
