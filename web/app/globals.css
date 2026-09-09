@@ -287,7 +287,7 @@ a:hover {
   color: var(--failed);
 }
 
-.list .row + .row {
+.list .row+.row {
   border-top: 1px solid var(--line);
 }
 
@@ -406,7 +406,7 @@ a:hover {
   padding: 14px 0;
 }
 
-.risk + .risk {
+.risk+.risk {
   border-top: 1px solid var(--line);
 }
 
@@ -595,9 +595,11 @@ a:hover {
     padding: 10px 14px;
     gap: 8px;
   }
+
   .nav-links {
     flex-wrap: wrap;
   }
+
   .nav-link {
     padding: 6px 10px;
     font-size: 13px;
@@ -886,6 +888,7 @@ a:hover {
   .wrap-wide {
     max-width: 760px;
   }
+
   .doc-split {
     grid-template-columns: 1fr;
   }
@@ -957,12 +960,10 @@ a:hover {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.65),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.65),
+      transparent);
   animation: shimmer 1.5s infinite;
 }
 
@@ -973,6 +974,7 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .skeleton::after,
   .spin {
     animation: none;
@@ -1047,6 +1049,7 @@ a:hover {
     gap: 8px;
     flex-wrap: wrap;
   }
+
   .nav-email {
     display: none;
   }

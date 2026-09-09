@@ -2,6 +2,7 @@ package com.signalyze.query.web;
 
 import com.signalyze.query.model.Analysis;
 import com.signalyze.query.repository.AnalysisRepository;
+import com.signalyze.query.security.CurrentUser;
 import com.signalyze.query.service.AnalysisService;
 import com.signalyze.query.web.dto.DocumentPage;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/documents")
@@ -42,6 +44,7 @@ public class QueryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "8") int size) {
 
+        String userId = CurrentUser.id();
         int p = Math.max(0, page);
         int s = Math.min(Math.max(1, size), 50);
         Pageable pageable = PageRequest.of(p, s, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -49,13 +52,13 @@ public class QueryController {
         List<Analysis> items;
         long total;
         if (q == null || q.isBlank()) {
-            Page<Analysis> result = analysisRepository.findAll(pageable);
+            Page<Analysis> result = analysisRepository.findByUserId(userId, pageable);
             items = result.getContent();
             total = result.getTotalElements();
         } else {
             String term = q.trim();
-            items = analysisRepository.search(term, pageable);
-            total = analysisRepository.countSearch(term);
+            items = analysisRepository.search(term, userId, pageable);
+            total = analysisRepository.countSearch(term, userId);
         }
 
         int totalPages = (int) Math.ceil((double) total / s);
@@ -64,10 +67,13 @@ public class QueryController {
 
     @DeleteMapping("/{jobId}")
     public ResponseEntity<Void> delete(@PathVariable String jobId) {
-        boolean existed = analysisService.delete(jobId);
-        return existed
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.notFound().build();
+        String userId = CurrentUser.id();
+        Optional<Analysis> found = analysisRepository.findById(jobId);
+        if (found.isEmpty() || userId == null || !userId.equals(found.get().getUserId())) {
+            return ResponseEntity.notFound().build();
+        }
+        analysisService.delete(jobId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{jobId}/status")
@@ -81,7 +87,9 @@ public class QueryController {
 
     @GetMapping("/{jobId}")
     public ResponseEntity<Analysis> getAnalysis(@PathVariable String jobId) {
+        String userId = CurrentUser.id();
         return analysisService.getById(jobId)
+                .filter(a -> userId != null && userId.equals(a.getUserId()))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

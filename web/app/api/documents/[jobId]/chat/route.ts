@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authHeaders } from "@/lib/server-auth";
 
 const QUERY_URL = process.env.QUERY_URL ?? "http://localhost:8083";
 
@@ -9,7 +10,13 @@ export async function GET(
   const { jobId } = await params;
   const res = await fetch(`${QUERY_URL}/documents/${jobId}/chat`, {
     cache: "no-store",
+    headers: { ...(await authHeaders()) },
   });
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  if (res.status === 404) {
+    return NextResponse.json([]);
+  }
+  if (!res.ok) {
+    return new NextResponse(null, { status: res.status });
+  }
+  return NextResponse.json(await res.json());
 }

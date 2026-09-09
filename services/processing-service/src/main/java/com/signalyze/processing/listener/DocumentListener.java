@@ -63,6 +63,7 @@ public class DocumentListener {
 
         Analysis analysis = new Analysis();
         analysis.setJobId(event.jobId());
+        analysis.setUserId(event.userId());
         analysis.setFilename(event.filename());
         analysis.setStatus("DONE");
         analysis.setSummary(result.summary());

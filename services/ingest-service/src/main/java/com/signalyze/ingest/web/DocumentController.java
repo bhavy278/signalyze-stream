@@ -2,7 +2,7 @@ package com.signalyze.ingest.web;
 
 import com.signalyze.ingest.config.KafkaTopicsConfig;
 import com.signalyze.ingest.event.DocumentUploaded;
-import jakarta.servlet.http.HttpServletRequest;
+import com.signalyze.ingest.security.CurrentUser;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -41,15 +41,16 @@ public class DocumentController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, String>> upload(@RequestParam("file") MultipartFile file,
-                                                      HttpServletRequest request) throws IOException {
-        String rateKey = "rate:" + request.getRemoteAddr();
+    public ResponseEntity<Map<String, String>> upload(@RequestParam("file") MultipartFile file) throws IOException {
+        String userId = CurrentUser.id();
+
+        String rateKey = "rate:" + userId;
         Long count = redis.opsForValue().increment(rateKey);
         if (count != null && count == 1L) {
             redis.expire(rateKey, Duration.ofMinutes(1));
         }
         if (count != null && count > MAX_UPLOADS_PER_MINUTE) {
-            log.warn("Rate limit exceeded for {}", request.getRemoteAddr());
+            log.warn("Rate limit exceeded for user {}", userId);
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("error", "Rate limit exceeded. Please wait a minute."));
         }
@@ -61,11 +62,11 @@ public class DocumentController {
         }
 
         DocumentUploaded event =
-                DocumentUploaded.of(jobId, file.getOriginalFilename(), file.getSize(), content);
+                DocumentUploaded.of(jobId, userId, file.getOriginalFilename(), file.getSize(), content);
 
         redis.opsForValue().set("status:" + jobId, "PROCESSING", Duration.ofHours(1));
         kafkaTemplate.send(KafkaTopicsConfig.DOCUMENT_UPLOADED, jobId, event);
-        log.info("Published DocumentUploaded jobId={} filename={}", jobId, file.getOriginalFilename());
+        log.info("Published DocumentUploaded jobId={} userId={} filename={}", jobId, userId, file.getOriginalFilename());
 
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(Map.of("jobId", jobId, "status", "PROCESSING"));
