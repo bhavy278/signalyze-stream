@@ -7,8 +7,7 @@ import { pillClass, statusLabel, timeAgo } from "@/lib/format";
 import { ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/Skeleton";
-import AnalysisReport from "@/components/AnalysisReport";
-import DocumentChat from "@/components/DocumentChat";
+import DocumentWorkspace from "@/components/DocumentWorkspace";
 
 const PAGE_SIZE = 8;
 
@@ -93,13 +92,11 @@ export default function DocumentsPage() {
         </button>
 
         <motion.div
-          className="doc-split"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: "easeOut" }}
         >
-          <AnalysisReport selected={selected} />
-          <DocumentChat selected={selected} />
+          <DocumentWorkspace selected={selected} />
         </motion.div>
       </main>
     );

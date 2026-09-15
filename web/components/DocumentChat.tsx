@@ -7,7 +7,13 @@ import { motion } from "framer-motion";
 import type { Analysis, ChatMessage } from "@/lib/types";
 import { askDocument, getChat } from "@/lib/api";
 
-export default function DocumentChat({ selected }: { selected: Analysis }) {
+export default function DocumentChat({
+  selected,
+  onJumpToSource,
+}: {
+  selected: Analysis;
+  onJumpToSource?: (text: string) => void;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
@@ -84,10 +90,16 @@ export default function DocumentChat({ selected }: { selected: Analysis }) {
               <div className="msg-sources">
                 <div className="eyebrow">Sources</div>
                 {m.sources.map((s) => (
-                  <div className="source" key={s.chunkIndex}>
+                  <button
+                    className="source source--clickable"
+                    key={s.chunkIndex}
+                    type="button"
+                    title="Jump to this passage in the document"
+                    onClick={() => onJumpToSource?.(s.excerpt)}
+                  >
                     <span className="source-tag">#{s.chunkIndex}</span>
                     <span className="source-text">{s.excerpt}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
