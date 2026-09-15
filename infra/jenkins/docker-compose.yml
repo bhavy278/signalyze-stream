@@ -1,0 +1,17 @@
+services:
+  jenkins:
+    build: .
+    container_name: signalyze-jenkins
+    # Local-dev convenience: run as root so the container can use the mounted
+    # Docker socket. Fine for a local CI box; don't do this in production.
+    user: root
+    ports:
+      - "8090:8080"     # Jenkins UI (8080 is taken by kafka-ui)
+      - "50000:50000"   # agent port
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
