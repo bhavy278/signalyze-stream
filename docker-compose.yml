@@ -45,6 +45,7 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: signalyze-kafka:29092
       SPRING_DATA_REDIS_HOST: signalyze-redis
       JWT_SECRET: ${JWT_SECRET}
+      MONGODB_URI: ${MONGODB_URI}
     depends_on:
       - kafka
       - redis

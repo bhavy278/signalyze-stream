@@ -3,6 +3,7 @@ package com.signalyze.ingest.web;
 import com.signalyze.ingest.config.KafkaTopicsConfig;
 import com.signalyze.ingest.event.DocumentUploaded;
 import com.signalyze.ingest.security.CurrentUser;
+import com.signalyze.ingest.storage.FileStorageService;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -34,10 +35,13 @@ public class DocumentController {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final StringRedisTemplate redis;
+    private final FileStorageService fileStorage;
 
-    public DocumentController(KafkaTemplate<String, Object> kafkaTemplate, StringRedisTemplate redis) {
+    public DocumentController(KafkaTemplate<String, Object> kafkaTemplate, StringRedisTemplate redis,
+                             FileStorageService fileStorage) {
         this.kafkaTemplate = kafkaTemplate;
         this.redis = redis;
+        this.fileStorage = fileStorage;
     }
 
     @PostMapping
@@ -60,6 +64,8 @@ public class DocumentController {
         if (content.length() > MAX_CONTENT_CHARS) {
             content = content.substring(0, MAX_CONTENT_CHARS);
         }
+
+        fileStorage.store(jobId, userId, file);
 
         DocumentUploaded event =
                 DocumentUploaded.of(jobId, userId, file.getOriginalFilename(), file.getSize(), content);

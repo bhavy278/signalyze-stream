@@ -5,7 +5,7 @@ import { Plus, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Analysis } from "@/lib/types";
 import { getAnalysis, getStatus, uploadDocument } from "@/lib/api";
-import AnalysisView from "@/components/AnalysisView";
+import DocumentWorkspace from "@/components/DocumentWorkspace";
 
 export default function Home() {
   const [selected, setSelected] = useState<Analysis | null>(null);
@@ -74,7 +74,7 @@ export default function Home() {
   }
 
   return (
-    <main className="wrap">
+    <main className={selected ? "wrap wrap-wide" : "wrap"}>
       {!selected && (
         <>
           <section className="hero">
@@ -143,7 +143,7 @@ export default function Home() {
               New
             </button>
           </div>
-          <AnalysisView selected={selected} />
+          <DocumentWorkspace selected={selected} />
         </motion.section>
       )}
     </main>

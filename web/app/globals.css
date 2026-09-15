@@ -1054,3 +1054,171 @@ a:hover {
     display: none;
   }
 }
+/* Document workspace: preview/analysis tabs | chat */
+.workspace {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.workspace-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.wtabs {
+  display: inline-flex;
+  gap: 4px;
+  align-self: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  padding: 4px;
+}
+
+.wtab {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: none;
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--pill);
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.wtab--active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.preview-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.preview-loading {
+  padding: 22px;
+}
+
+.preview-body {
+  max-height: 72vh;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.preview-body .pdf-page {
+  display: block;
+  margin: 0 auto 16px;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: var(--shadow-sm);
+}
+
+.doc-html {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.doc-html h1,
+.doc-html h2,
+.doc-html h3 {
+  margin: 16px 0 6px;
+  line-height: 1.25;
+}
+
+.doc-html p {
+  margin: 8px 0;
+}
+
+.doc-html ul,
+.doc-html ol {
+  margin: 8px 0 8px 20px;
+}
+
+.doc-html table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.doc-html td,
+.doc-html th {
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.doc-html th {
+  background: var(--surface-2);
+}
+
+.doc-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink);
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Clickable chat sources + preview highlight */
+.source--clickable {
+  width: 100%;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  transition: background 0.12s ease;
+}
+
+.source--clickable:hover {
+  background: var(--surface-2);
+}
+
+.source--clickable:hover .source-tag {
+  text-decoration: underline;
+}
+
+mark.hl {
+  background: var(--accent-soft);
+  color: inherit;
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.hl-block {
+  background: var(--accent-soft);
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* PDF page flash on source jump */
+.pdf-page.pdf-flash {
+  animation: pdfFlash 1.6s ease;
+}
+
+@keyframes pdfFlash {
+  0%, 100% { box-shadow: var(--shadow-sm); }
+  25%, 60% { box-shadow: 0 0 0 3px var(--accent); }
+}
