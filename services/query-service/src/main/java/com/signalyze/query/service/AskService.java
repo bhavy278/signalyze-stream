@@ -1,5 +1,6 @@
 package com.signalyze.query.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signalyze.query.ai.OpenAiClient;
 import com.signalyze.query.model.ChatMessage;
 import com.signalyze.query.model.DocumentChunk;
@@ -10,6 +11,9 @@ import com.signalyze.query.web.dto.ChatMessageDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,11 +40,13 @@ public class AskService {
     private final ChunkRepository chunkRepository;
     private final ChatRepository chatRepository;
     private final OpenAiClient ai;
+    private final ObjectMapper objectMapper;
 
-    public AskService(ChunkRepository chunkRepository, ChatRepository chatRepository, OpenAiClient ai) {
+    public AskService(ChunkRepository chunkRepository, ChatRepository chatRepository, OpenAiClient ai, ObjectMapper objectMapper) {
         this.chunkRepository = chunkRepository;
         this.chatRepository = chatRepository;
         this.ai = ai;
+        this.objectMapper = objectMapper;
     }
 
     public List<ChatMessageDto> history(String jobId) {
@@ -100,6 +106,60 @@ public class AskService {
         saveTurn(jobId, question, answer, sources);
         log.info("Chat answer jobId={} priorTurns={} chunks={}", jobId, history.size(), top.size());
         return new AskResponse(answer, sources);
+    }
+
+    /** Streams the answer over SSE: sources first, then tokens, then done. Saves the turn at the end. */
+    public void streamAnswer(String jobId, String question, SseEmitter emitter) throws IOException {
+        List<DocumentChunk> chunks = chunkRepository.findByJobId(jobId);
+        if (chunks.isEmpty()) {
+            String msg = "This document isn't indexed for questions yet — re-upload it and try again.";
+            emitter.send(SseEmitter.event().name("token").data(objectMapper.writeValueAsString(msg)));
+            saveTurn(jobId, question, msg, List.of());
+            emitter.send(SseEmitter.event().name("done").data("{}"));
+            return;
+        }
+
+        float[] q = ai.embed(question);
+        List<Scored> scored = new ArrayList<>();
+        for (DocumentChunk c : chunks) {
+            scored.add(new Scored(c, cosine(q, c.getEmbedding())));
+        }
+        scored.sort(Comparator.comparingDouble(Scored::score).reversed());
+        List<Scored> top = scored.subList(0, Math.min(TOP_K, scored.size()));
+
+        StringBuilder context = new StringBuilder();
+        List<AskResponse.Source> sources = new ArrayList<>();
+        for (Scored s : top) {
+            context.append("[Excerpt ").append(s.chunk().getChunkIndex()).append("]\n")
+                    .append(s.chunk().getText()).append("\n\n");
+            sources.add(new AskResponse.Source(s.chunk().getChunkIndex(), excerpt(s.chunk().getText())));
+        }
+
+        emitter.send(SseEmitter.event().name("sources").data(objectMapper.writeValueAsString(sources)));
+
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+        List<ChatMessage> historyMsgs = chatRepository.findByJobIdOrderByCreatedAtAsc(jobId);
+        int startIdx = Math.max(0, historyMsgs.size() - HISTORY_LIMIT);
+        for (ChatMessage m : historyMsgs.subList(startIdx, historyMsgs.size())) {
+            messages.add(Map.of("role", m.getRole(), "content", m.getContent()));
+        }
+        messages.add(Map.of("role", "user",
+                "content", "Relevant excerpts from the document:\n\n" + context + "\nQuestion: " + question));
+
+        StringBuilder full = new StringBuilder();
+        ai.streamChat(messages, token -> {
+            full.append(token);
+            try {
+                emitter.send(SseEmitter.event().name("token").data(objectMapper.writeValueAsString(token)));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        saveTurn(jobId, question, full.toString(), sources);
+        emitter.send(SseEmitter.event().name("done").data("{}"));
+        log.info("Streamed answer jobId={} chunks={}", jobId, top.size());
     }
 
     private void saveTurn(String jobId, String question, String answer, List<AskResponse.Source> sources) {

@@ -13,8 +13,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @RestController
 @RequestMapping("/documents")
@@ -22,6 +25,7 @@ public class AskController {
 
     private final AskService askService;
     private final AnalysisRepository analysisRepository;
+    private final ExecutorService executor = Executors.newCachedThreadPool();
 
     public AskController(AskService askService, AnalysisRepository analysisRepository) {
         this.askService = askService;
@@ -53,5 +57,24 @@ public class AskController {
             return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(askService.ask(jobId, request.question().trim()));
+    }
+
+    @PostMapping("/{jobId}/ask/stream")
+    public SseEmitter askStream(@PathVariable String jobId, @RequestBody AskRequest request) {
+        SseEmitter emitter = new SseEmitter(180_000L);
+        if (!owns(jobId) || request == null || request.question() == null || request.question().isBlank()) {
+            emitter.completeWithError(new IllegalStateException("Invalid request or not found"));
+            return emitter;
+        }
+        String question = request.question().trim();
+        executor.execute(() -> {
+            try {
+                askService.streamAnswer(jobId, question, emitter);
+                emitter.complete();
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        });
+        return emitter;
     }
 }
