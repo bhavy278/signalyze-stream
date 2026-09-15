@@ -72,8 +72,10 @@ services:
       MONGODB_URI: ${MONGODB_URI}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: signalyze-kafka:29092
     depends_on:
       - redis
+      - kafka
   auth-service:
     build: ./services/auth-service
     container_name: signalyze-auth
