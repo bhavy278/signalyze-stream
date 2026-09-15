@@ -17,4 +17,5 @@ web/out/
 *.local
 .DS_Store
 *.log
-secrets.propertiesClaude outputs/
+secrets.properties
+Claude outputs/
