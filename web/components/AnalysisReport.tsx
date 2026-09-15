@@ -12,7 +12,7 @@ export default function AnalysisReport({ selected }: { selected: Analysis }) {
       <div className="row-between">
         <div>
           <div className="meta">{selected.filename}</div>
-          <h3 style={{ fontSize: 18, marginTop: 6 }}>
+          <h3 style={{ fontSize: 22, marginTop: 6, letterSpacing: "-0.01em" }}>
             {r?.documentType || "Summary"}
           </h3>
           {r?.parties && r.parties.length > 0 && (

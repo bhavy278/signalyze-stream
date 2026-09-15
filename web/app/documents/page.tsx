@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Analysis, DocumentPage } from "@/lib/types";
+import type { Analysis, DocumentPage, Risk } from "@/lib/types";
 import { deleteDocument, getAnalysis, listDocuments } from "@/lib/api";
 import { pillClass, statusLabel, timeAgo } from "@/lib/format";
 import { ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
@@ -10,6 +10,30 @@ import { Skeleton } from "@/components/Skeleton";
 import DocumentWorkspace from "@/components/DocumentWorkspace";
 
 const PAGE_SIZE = 8;
+
+function fileType(name: string): string {
+  const n = name.toLowerCase();
+  if (n.endsWith(".pdf")) return "PDF";
+  if (n.endsWith(".docx")) return "DOCX";
+  if (n.endsWith(".doc")) return "DOC";
+  if (n.endsWith(".md") || n.endsWith(".markdown")) return "MD";
+  if (n.endsWith(".txt")) return "TXT";
+  const dot = n.lastIndexOf(".");
+  return dot > -1 ? n.slice(dot + 1).toUpperCase().slice(0, 4) : "FILE";
+}
+
+const SEV_RANK: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+function topSeverity(risks: Risk[]): string {
+  return risks.reduce((top, r) => {
+    const s = r.severity.toUpperCase();
+    return (SEV_RANK[s] ?? 0) > (SEV_RANK[top] ?? 0) ? s : top;
+  }, "LOW");
+}
+function sevColor(sev: string): string {
+  if (sev === "HIGH") return "var(--failed)";
+  if (sev === "MEDIUM") return "var(--processing)";
+  return "var(--done)";
+}
 
 export default function DocumentsPage() {
   const [pageData, setPageData] = useState<DocumentPage | null>(null);
@@ -81,22 +105,18 @@ export default function DocumentsPage() {
   if (selected) {
     return (
       <main className="wrap wrap-wide">
-        <button
-          className="btn btn-ghost btn-sm"
-          type="button"
-          onClick={() => setSelected(null)}
-          style={{ marginBottom: 20 }}
-        >
-          <ArrowLeft size={15} />
-          Back to documents
-        </button>
-
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: "easeOut" }}
         >
-          <DocumentWorkspace selected={selected} />
+          <DocumentWorkspace
+            selected={selected}
+            crumb="Your Documents"
+            onNew={() => setSelected(null)}
+            newLabel="Back to documents"
+            newIcon={<ArrowLeft size={15} />}
+          />
         </motion.div>
       </main>
     );
@@ -166,29 +186,73 @@ export default function DocumentsPage() {
           </div>
         ) : (
           <>
-            <div className="card list">
-              {docs.map((d) => (
-                <div className="row" key={d.jobId}>
-                  <button className="row-open" onClick={() => void openDoc(d.jobId)}>
-                    <span className="row-file">{d.filename}</span>
-                    <span className="row-right">
-                      <span className="meta">{timeAgo(d.createdAt)}</span>
-                      <span className={pillClass(d.status)}>
-                        <span className="dot" />
-                        {statusLabel[d.status.toUpperCase()] ?? d.status}
-                      </span>
-                    </span>
-                  </button>
-                  <button
-                    className="row-del"
-                    title="Delete"
-                    aria-label={`Delete ${d.filename}`}
-                    onClick={() => void handleDelete(d.jobId)}
+            <div className="card dtable">
+              <div className="dhead">
+                <span>Document</span>
+                <span className="hide-narrow">Type</span>
+                <span className="hide-narrow">Parties</span>
+                <span className="hide-narrow">Risk flags</span>
+                <span>Uploaded</span>
+                <span>Status</span>
+                <span aria-hidden="true"></span>
+              </div>
+              {docs.map((d) => {
+                const risks = d.result?.risks ?? [];
+                const parties = d.result?.parties?.length ?? 0;
+                return (
+                  <div
+                    className="drow"
+                    key={d.jobId}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => void openDoc(d.jobId)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        void openDoc(d.jobId);
+                      }
+                    }}
                   >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))}
+                    <span className="drow-file">
+                      <span className="ftype">{fileType(d.filename)}</span>
+                      <span className="drow-name">{d.filename}</span>
+                    </span>
+                    <span className="dcell hide-narrow">
+                      {d.result?.documentType ?? "\u2014"}
+                    </span>
+                    <span className="dcell hide-narrow">{parties ? parties : "\u2014"}</span>
+                    <span className="hide-narrow">
+                      {risks.length ? (
+                        <span className="risk-badge">
+                          <span
+                            className="risk-dot"
+                            style={{ background: sevColor(topSeverity(risks)) }}
+                          />
+                          {risks.length} {risks.length === 1 ? "flag" : "flags"}
+                        </span>
+                      ) : (
+                        <span className="muted-cell">None</span>
+                      )}
+                    </span>
+                    <span className="muted-cell">{timeAgo(d.createdAt)}</span>
+                    <span className={pillClass(d.status)}>
+                      <span className="dot" />
+                      {statusLabel[d.status.toUpperCase()] ?? d.status}
+                    </span>
+                    <button
+                      className="row-del"
+                      title="Delete"
+                      aria-label={`Delete ${d.filename}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleDelete(d.jobId);
+                      }}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             {totalPages > 1 && (

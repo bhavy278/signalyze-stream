@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { MorphIcon } from "morphicons/react";
 import { LoaderCircle, Send } from "lucide";
-import { motion } from "framer-motion";
-import type { Analysis, ChatMessage } from "@/lib/types";
-import { askDocument, getChat } from "@/lib/api";
+import { ChevronRight } from "lucide-react";
+import type { Analysis, AskSource, ChatMessage } from "@/lib/types";
+import { askDocumentStream, getChat } from "@/lib/api";
 
 export default function DocumentChat({
   selected,
@@ -15,6 +15,9 @@ export default function DocumentChat({
   onJumpToSource?: (text: string) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [streaming, setStreaming] = useState<{ content: string; sources: AskSource[] } | null>(
+    null,
+  );
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
@@ -25,6 +28,7 @@ export default function DocumentChat({
 
   useEffect(() => {
     setMessages([]);
+    setStreaming(null);
     setQuestion("");
     setAskError(null);
     if (!chatReady) return;
@@ -41,7 +45,7 @@ export default function DocumentChat({
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, asking]);
+  }, [messages, streaming]);
 
   async function handleAsk(e?: React.FormEvent) {
     e?.preventDefault();
@@ -50,63 +54,88 @@ export default function DocumentChat({
     setQuestion("");
     setAskError(null);
     setMessages((prev) => [...prev, { role: "user", content: q }]);
+    setStreaming({ content: "", sources: [] });
     setAsking(true);
+
+    let acc = "";
+    let srcs: AskSource[] = [];
     try {
-      const res = await askDocument(selected.jobId, q);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: res.answer, sources: res.sources },
-      ]);
+      await askDocumentStream(selected.jobId, q, {
+        onSources: (s) => {
+          srcs = s;
+          setStreaming((v) => (v ? { ...v, sources: s } : v));
+        },
+        onToken: (t) => {
+          acc += t;
+          setStreaming((v) => (v ? { ...v, content: acc } : v));
+        },
+      });
+      setMessages((prev) => [...prev, { role: "assistant", content: acc, sources: srcs }]);
     } catch {
       setAskError("Couldn’t get an answer — is the backend running?");
     } finally {
+      setStreaming(null);
       setAsking(false);
     }
   }
 
   if (!chatReady) return null;
 
+  const renderSources = (sources: AskSource[]) => (
+    <details className="msg-sources">
+      <summary>
+        <ChevronRight className="src-caret" size={12} strokeWidth={2.5} />
+        Sources
+        <span className="src-count">{sources.length}</span>
+      </summary>
+      <div className="src-list">
+        {sources.map((s) => (
+          <button
+            className="src-item"
+            key={s.chunkIndex}
+            type="button"
+            title="Jump to this passage in the document"
+            onClick={() => onJumpToSource?.(s.excerpt)}
+          >
+            <span className="src-pg">#{s.chunkIndex}</span>
+            <span className="src-sn">{s.excerpt}</span>
+          </button>
+        ))}
+      </div>
+    </details>
+  );
+
   return (
-    <div className="card chat-card" style={{ padding: 24 }}>
-      <div className="eyebrow">Chat with this document</div>
+    <div className="card chat-card">
+      <div className="chat-head">
+        <div className="chat-head-t">Chat with this document</div>
+        <div className="chat-head-s">Grounded answers with cited sources</div>
+      </div>
 
       <div className="chat-log" ref={logRef}>
-        {messages.length === 0 && !asking && (
+        {messages.length === 0 && !streaming && (
           <div className="chat-empty">
             Ask anything about this document — e.g. “What are the payment terms?”
           </div>
         )}
 
         {messages.map((m, i) => (
-          <motion.div
-            key={i}
-            className={m.role === "user" ? "msg msg--user" : "msg msg--ai"}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
+          <div key={i} className={m.role === "user" ? "msg msg--user" : "msg msg--ai"}>
             <div className="bubble">{m.content}</div>
-            {m.role === "assistant" && m.sources && m.sources.length > 0 && (
-              <div className="msg-sources">
-                <div className="eyebrow">Sources</div>
-                {m.sources.map((s) => (
-                  <button
-                    className="source source--clickable"
-                    key={s.chunkIndex}
-                    type="button"
-                    title="Jump to this passage in the document"
-                    onClick={() => onJumpToSource?.(s.excerpt)}
-                  >
-                    <span className="source-tag">#{s.chunkIndex}</span>
-                    <span className="source-text">{s.excerpt}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </motion.div>
+            {m.role === "assistant" && m.sources && m.sources.length > 0 && renderSources(m.sources)}
+          </div>
         ))}
 
-        {asking && <div className="typing">Thinking…</div>}
+        {streaming && (
+          <div className="msg msg--ai">
+            <div className="bubble">{streaming.content || "Thinking…"}</div>
+            {streaming.sources.length > 0 && renderSources(streaming.sources)}
+          </div>
+        )}
+
+        {askError && (
+          <p style={{ color: "var(--failed)", fontSize: 13.5, margin: "4px 2px 0" }}>{askError}</p>
+        )}
       </div>
 
       <form className="ask-row" onSubmit={handleAsk}>
@@ -133,10 +162,6 @@ export default function DocumentChat({
           />
         </button>
       </form>
-
-      {askError && (
-        <p style={{ color: "var(--failed)", marginTop: 8, fontSize: 14 }}>{askError}</p>
-      )}
     </div>
   );
 }
