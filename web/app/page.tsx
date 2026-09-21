@@ -1,17 +1,20 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Plus, Upload } from "lucide-react";
+import { Plus, Upload, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Analysis } from "@/lib/types";
 import { getAnalysis, getStatus, streamStatus, uploadDocument } from "@/lib/api";
 import DocumentWorkspace from "@/components/DocumentWorkspace";
+import { useToast } from "@/components/Toast";
 
 export default function Home() {
   const [selected, setSelected] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastFileRef = useRef<File | null>(null);
 
   function reset() {
     setSelected(null);
@@ -20,6 +23,7 @@ export default function Home() {
   }
 
   async function handleFile(file: File) {
+    lastFileRef.current = file;
     setError(null);
     setBusy(true);
     setSelected({
@@ -40,10 +44,12 @@ export default function Home() {
             settled = true;
             setSelected(await getAnalysis(jobId));
             setBusy(false);
+            toast("Analysis complete", "success");
           } else if (s === "FAILED") {
             settled = true;
             setSelected((prev) => (prev ? { ...prev, jobId, status: "FAILED" } : prev));
             setBusy(false);
+            toast("Analysis failed for this document", "error");
           }
         },
         onEnd: async () => {
@@ -66,11 +72,14 @@ export default function Home() {
             // ignore
           }
           setError("Analysis timed out — is the backend running?");
+          toast("Analysis timed out — is the backend running?", "error");
           setBusy(false);
+          setSelected(null);
         },
       });
     } catch {
       setError("Upload failed — is the backend running?");
+      toast("Upload failed — is the backend running?", "error");
       setBusy(false);
       setSelected(null);
     }
@@ -136,7 +145,22 @@ export default function Home() {
       )}
 
       {error && (
-        <p style={{ color: "var(--failed)", marginTop: 12, fontSize: 14 }}>{error}</p>
+        <div className="error-banner">
+          <span>{error}</span>
+          {lastFileRef.current && (
+            <button
+              className="btn btn-sm"
+              type="button"
+              onClick={() => {
+                const f = lastFileRef.current;
+                if (f) void handleFile(f);
+              }}
+            >
+              <RefreshCw size={14} />
+              Retry
+            </button>
+          )}
+        </div>
       )}
 
       {selected && (

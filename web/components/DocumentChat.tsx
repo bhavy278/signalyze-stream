@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MorphIcon } from "morphicons/react";
 import { LoaderCircle, Send } from "lucide";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import type { Analysis, AskSource, ChatMessage } from "@/lib/types";
 import { askDocumentStream, getChat } from "@/lib/api";
 
@@ -22,6 +22,7 @@ export default function DocumentChat({
   const [asking, setAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  const lastQuestionRef = useRef<string>("");
 
   const status = selected.status.toUpperCase();
   const chatReady = status === "DONE" && selected.jobId !== "pending";
@@ -47,9 +48,10 @@ export default function DocumentChat({
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
-  async function handleAsk(e?: React.FormEvent) {
+  async function handleAsk(e?: React.FormEvent, retryQuestion?: string) {
     e?.preventDefault();
-    const q = question.trim();
+    const q = (retryQuestion ?? question).trim();
+    lastQuestionRef.current = q;
     if (!q || asking) return;
     setQuestion("");
     setAskError(null);
@@ -134,7 +136,17 @@ export default function DocumentChat({
         )}
 
         {askError && (
-          <p style={{ color: "var(--failed)", fontSize: 13.5, margin: "4px 2px 0" }}>{askError}</p>
+          <div className="chat-error">
+            <span>{askError}</span>
+            <button
+              className="btn btn-sm"
+              type="button"
+              onClick={() => handleAsk(undefined, lastQuestionRef.current)}
+            >
+              <RefreshCw size={14} />
+              Retry
+            </button>
+          </div>
         )}
       </div>
 
