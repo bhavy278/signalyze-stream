@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronUp, ChevronDown, ZoomIn, ZoomOut, Search, X } from "lucide-react";
+import DOMPurify from "dompurify";
 import { Skeleton } from "@/components/Skeleton";
 
 type Kind = "pdf" | "docx" | "md" | "text";
@@ -10,6 +11,9 @@ type PdfPage = {
   wrap: HTMLDivElement;
   scaleEl: HTMLDivElement;
   textLayer: HTMLDivElement;
+  canvas: HTMLCanvasElement;
+  render: () => Promise<void>;
+  rendered: boolean;
   text: string;
   cssWidth: number;
   cssHeight: number;
@@ -170,6 +174,7 @@ export default function DocumentPreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const kindRef = useRef<Kind>("text");
   const pdfPagesRef = useRef<PdfPage[]>([]);
+  const observerRef = useRef<IntersectionObserver | null>(null);
   const contentElRef = useRef<HTMLElement | null>(null);
   const baseFontRef = useRef(14);
   const matchElsRef = useRef<HTMLElement[]>([]);
@@ -191,6 +196,7 @@ export default function DocumentPreview({
     const container = containerRef.current;
     if (!container) return;
     container.innerHTML = "";
+    observerRef.current?.disconnect();
     pdfPagesRef.current = [];
     contentElRef.current = null;
     matchElsRef.current = [];
@@ -243,14 +249,10 @@ export default function DocumentPreview({
             scaleEl.style.height = `${cssHeight}px`;
 
             const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-            if (!ctx) continue;
             canvas.width = viewport.width;
             canvas.height = viewport.height;
             canvas.style.width = `${cssWidth}px`;
             canvas.style.height = `${cssHeight}px`;
-            await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-            if (cancelled) return;
 
             const tc = await page.getTextContent();
             const styles = tc.styles as Record<string, { fontFamily?: string } | undefined>;
@@ -297,22 +299,52 @@ export default function DocumentPreview({
             wrap.appendChild(scaleEl);
             container.appendChild(wrap);
 
-            pdfPagesRef.current.push({
+            const entry: PdfPage = {
               wrap,
               scaleEl,
               textLayer,
-              text: strs.join(" "),
+              canvas,
               cssWidth,
               cssHeight,
-            });
+              text: strs.join(" "),
+              rendered: false,
+              render: async () => {
+                if (entry.rendered) return;
+                entry.rendered = true;
+                const c2d = canvas.getContext("2d");
+                if (!c2d) return;
+                await page.render({ canvas, canvasContext: c2d, viewport }).promise;
+              },
+            };
+            pdfPagesRef.current.push(entry);
           }
+
+          if (cancelled) return;
+          // Rasterize each page's canvas only as it nears the viewport.
+          const io = new IntersectionObserver(
+            (obsEntries) => {
+              for (const oe of obsEntries) {
+                if (!oe.isIntersecting) continue;
+                const idx = Number((oe.target as HTMLElement).dataset.pageIndex);
+                const pg = pdfPagesRef.current[idx];
+                if (pg && !pg.rendered) void pg.render();
+                io.unobserve(oe.target);
+              }
+            },
+            { root: container, rootMargin: "400px 0px" },
+          );
+          pdfPagesRef.current.forEach((pg, idx) => {
+            pg.wrap.dataset.pageIndex = String(idx);
+            io.observe(pg.wrap);
+          });
+          observerRef.current = io;
         } else if (kind === "docx") {
           const mammoth = await import("mammoth");
           const result = await mammoth.convertToHtml({ arrayBuffer: buf });
           if (cancelled) return;
           const div = document.createElement("div");
           div.className = "doc-html";
-          div.innerHTML = result.value;
+          div.innerHTML = DOMPurify.sanitize(result.value);
           container.appendChild(div);
           contentElRef.current = div;
           baseFontRef.current = 14;
@@ -322,7 +354,7 @@ export default function DocumentPreview({
           if (cancelled) return;
           const div = document.createElement("div");
           div.className = "doc-html";
-          div.innerHTML = html as string;
+          div.innerHTML = DOMPurify.sanitize(html as string);
           container.appendChild(div);
           contentElRef.current = div;
           baseFontRef.current = 14;
@@ -346,6 +378,7 @@ export default function DocumentPreview({
 
     return () => {
       cancelled = true;
+      observerRef.current?.disconnect();
     };
   }, [jobId, filename]);
 
@@ -458,6 +491,7 @@ export default function DocumentPreview({
     const c = containerRef.current;
     const p = pdfPagesRef.current[pageNum - 1];
     if (!c || !p) return;
+    void p.render();
     c.scrollTo({ top: p.wrap.offsetTop - 8, behavior: "smooth" });
   }
 
@@ -476,6 +510,7 @@ export default function DocumentPreview({
       );
       const p = pages[found >= 0 ? found : 0];
       if (!p) return;
+      void p.render();
       container.scrollTo({ top: p.wrap.offsetTop - 8, behavior: "smooth" });
       pages.forEach((pp) => pp.wrap.classList.remove("pdf-flash"));
       p.wrap.classList.add("pdf-flash");
