@@ -1664,3 +1664,121 @@ mark.s-cur {
     width: 130px;
   }
 }
+
+/* Toasts */
+.toaster {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(92vw, 380px);
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  animation: toastIn 0.2s ease;
+}
+
+.toast-icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.toast--success .toast-icon {
+  color: var(--done);
+}
+.toast--error .toast-icon {
+  color: var(--failed);
+}
+.toast--info .toast-icon {
+  color: var(--accent-ink);
+}
+
+.toast-msg {
+  flex: 1;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.toast-close {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+}
+.toast-close:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Error banners + retry */
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--failed-soft);
+  color: var(--failed);
+  font-size: 14px;
+}
+
+.chat-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 2px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--failed-soft);
+  color: var(--failed);
+  font-size: 13px;
+}
+
+.error-state {
+  max-width: 520px;
+  margin: 60px auto;
+  text-align: center;
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.error-state h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+.error-state p {
+  color: var(--ink-2);
+  margin: 0 0 18px;
+}

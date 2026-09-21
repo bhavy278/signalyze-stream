@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Analysis, DocumentPage, Risk } from "@/lib/types";
 import { deleteDocument, getAnalysis, listDocuments } from "@/lib/api";
 import { pillClass, statusLabel, timeAgo } from "@/lib/format";
@@ -8,6 +8,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/Skeleton";
 import DocumentWorkspace from "@/components/DocumentWorkspace";
+import { useToast } from "@/components/Toast";
 
 const PAGE_SIZE = 8;
 
@@ -43,6 +44,9 @@ export default function DocumentsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const prefetchRef = useRef<Map<string, Analysis>>(new Map());
+  const inflightRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async (q: string | undefined, p: number) => {
     try {
@@ -65,7 +69,22 @@ export default function DocumentsPage() {
   const total = pageData?.total ?? 0;
   const totalPages = pageData?.totalPages ?? 0;
 
+  function prefetch(jobId: string) {
+    if (prefetchRef.current.has(jobId) || inflightRef.current.has(jobId)) return;
+    inflightRef.current.add(jobId);
+    getAnalysis(jobId)
+      .then((a) => prefetchRef.current.set(jobId, a))
+      .catch(() => {})
+      .finally(() => inflightRef.current.delete(jobId));
+  }
+
   async function openDoc(jobId: string) {
+    const cached = prefetchRef.current.get(jobId);
+    if (cached) {
+      setSelected(cached);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     try {
       setSelected(await getAnalysis(jobId));
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -89,6 +108,7 @@ export default function DocumentsPage() {
 
     try {
       await deleteDocument(jobId);
+      toast("Document deleted", "success");
       const remaining = (pageData?.items.length ?? 1) - 1;
       if (remaining <= 0 && page > 0) {
         setPage((p) => p - 1); // effect reloads the previous page
@@ -97,6 +117,7 @@ export default function DocumentsPage() {
       }
     } catch {
       setError("Couldn’t delete that document.");
+      toast("Couldn’t delete that document.", "error");
       void load(query.trim() || undefined, page);
     }
   }
@@ -205,6 +226,8 @@ export default function DocumentsPage() {
                     key={d.jobId}
                     role="button"
                     tabIndex={0}
+                    onMouseEnter={() => prefetch(d.jobId)}
+                    onFocus={() => prefetch(d.jobId)}
                     onClick={() => void openDoc(d.jobId)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
