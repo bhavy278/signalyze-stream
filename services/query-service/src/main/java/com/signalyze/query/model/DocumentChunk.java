@@ -1,6 +1,7 @@
 package com.signalyze.query.model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "chunks")
@@ -8,6 +9,7 @@ public class DocumentChunk {
 
     @Id
     private String id;
+    @Indexed
     private String jobId;
     private int chunkIndex;
     private String text;

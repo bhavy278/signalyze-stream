@@ -18,11 +18,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -32,6 +34,7 @@ public class DocumentController {
     private static final Logger log = LoggerFactory.getLogger(DocumentController.class);
     private static final int MAX_UPLOADS_PER_MINUTE = 5;
     private static final int MAX_CONTENT_CHARS = 30_000;
+    private static final Set<String> ALLOWED_EXT = Set.of("pdf", "txt", "md", "markdown");
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final StringRedisTemplate redis;
@@ -46,6 +49,7 @@ public class DocumentController {
 
     @PostMapping
     public ResponseEntity<Map<String, String>> upload(@RequestParam("file") MultipartFile file) throws IOException {
+        validate(file);
         String userId = CurrentUser.id();
 
         String rateKey = "rate:" + userId;
@@ -76,6 +80,20 @@ public class DocumentController {
 
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(Map.of("jobId", jobId, "status", "PROCESSING"));
+    }
+
+    private void validate(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No file was uploaded.");
+        }
+        String name = file.getOriginalFilename();
+        String ext = (name != null && name.contains("."))
+                ? name.substring(name.lastIndexOf('.') + 1).toLowerCase()
+                : "";
+        if (!ALLOWED_EXT.contains(ext)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Unsupported file type. Upload a PDF, TXT, or Markdown file.");
+        }
     }
 
     private String extractText(MultipartFile file) throws IOException {
