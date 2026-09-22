@@ -1782,3 +1782,23 @@ mark.s-cur {
   color: var(--ink-2);
   margin: 0 0 18px;
 }
+
+/* Live streamed analysis overview (typed out while the structured card generates) */
+.stream-overview {
+  margin-top: 4px;
+  margin-bottom: 18px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: stream-blink 1s steps(1) infinite;
+}
+@keyframes stream-blink {
+  50% { opacity: 0; }
+}

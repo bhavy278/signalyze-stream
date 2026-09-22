@@ -32,12 +32,14 @@ function TabPanel({ active, children }: { active: boolean; children: ReactNode }
 
 export default function DocumentWorkspace({
   selected,
+  streamingOverview,
   crumb,
   onNew,
   newLabel = "New",
   newIcon,
 }: {
   selected: Analysis;
+  streamingOverview?: string;
   crumb?: string;
   onNew?: () => void;
   newLabel?: string;
@@ -94,7 +96,7 @@ export default function DocumentWorkspace({
       <div>
         {header}
         <div className="wbody">
-          <AnalysisReport selected={selected} />
+          <AnalysisReport selected={selected} streamingOverview={streamingOverview} />
         </div>
       </div>
     );

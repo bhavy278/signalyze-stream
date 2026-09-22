@@ -153,3 +153,52 @@ export function streamStatus(
   })();
   return () => controller.abort();
 }
+
+export function streamAnalysis(
+  jobId: string,
+  handlers: {
+    onToken?: (token: string) => void;
+    onDone?: () => void;
+    onFailed?: () => void;
+  },
+): () => void {
+  const controller = new AbortController();
+  (async () => {
+    try {
+      const res = await fetch(`/api/documents/${jobId}/analysis/stream`, {
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) return;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf("\n\n")) !== -1) {
+          const rawEvent = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+          let name = "message";
+          let data = "";
+          for (const line of rawEvent.split("\n")) {
+            if (line.startsWith("event:")) name = line.slice(6).trim();
+            else if (line.startsWith("data:")) data += line.slice(5);
+          }
+          data = data.trim();
+          try {
+            if (name === "token") handlers.onToken?.(JSON.parse(data) as string);
+            else if (name === "done") handlers.onDone?.();
+            else if (name === "failed") handlers.onFailed?.();
+          } catch {
+            // ignore malformed event
+          }
+        }
+      }
+    } catch {
+      // aborted or network error
+    }
+  })();
+  return () => controller.abort();
+}

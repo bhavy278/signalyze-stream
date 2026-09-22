@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Plus, Upload, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Analysis } from "@/lib/types";
-import { getAnalysis, getStatus, streamStatus, uploadDocument } from "@/lib/api";
+import { getAnalysis, getStatus, streamAnalysis, streamStatus, uploadDocument } from "@/lib/api";
 import DocumentWorkspace from "@/components/DocumentWorkspace";
 import { useToast } from "@/components/Toast";
 
@@ -12,20 +12,26 @@ export default function Home() {
   const [selected, setSelected] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [overview, setOverview] = useState("");
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const lastFileRef = useRef<File | null>(null);
+  const stopStreamRef = useRef<(() => void) | null>(null);
 
   function reset() {
+    stopStreamRef.current?.();
     setSelected(null);
     setError(null);
     setBusy(false);
+    setOverview("");
   }
 
   async function handleFile(file: File) {
     lastFileRef.current = file;
     setError(null);
     setBusy(true);
+    stopStreamRef.current?.();
+    setOverview("");
     setSelected({
       jobId: "pending",
       filename: file.name,
@@ -36,6 +42,11 @@ export default function Home() {
     try {
       const { jobId } = await uploadDocument(file);
       let settled = false;
+
+      // Live overview: the analyst's read, typed out while the structured card is generated.
+      stopStreamRef.current = streamAnalysis(jobId, {
+        onToken: (t) => setOverview((o) => o + t),
+      });
 
       streamStatus(jobId, {
         onStatus: async (status) => {
@@ -171,6 +182,7 @@ export default function Home() {
         >
           <DocumentWorkspace
             selected={selected}
+            streamingOverview={overview}
             crumb="New Analysis"
             onNew={reset}
             newLabel="New"
