@@ -27,6 +27,8 @@ public class AskService {
 
     private static final Logger log = LoggerFactory.getLogger(AskService.class);
     private static final int TOP_K = 4;
+    private static final int CANDIDATES = 8;      // shortlist size before rerank
+    private static final double MMR_LAMBDA = 0.7; // relevance vs. diversity weighting
     private static final int HISTORY_LIMIT = 12; // prior messages sent for context
 
     private static final String SYSTEM_PROMPT = """
@@ -71,12 +73,7 @@ public class AskService {
 
         // Retrieve the most relevant chunks for the current question
         float[] q = ai.embed(question);
-        List<Scored> scored = new ArrayList<>();
-        for (DocumentChunk c : chunks) {
-            scored.add(new Scored(c, cosine(q, c.getEmbedding())));
-        }
-        scored.sort(Comparator.comparingDouble(Scored::score).reversed());
-        List<Scored> top = scored.subList(0, Math.min(TOP_K, scored.size()));
+        List<Scored> top = selectChunks(chunks, q);
 
         StringBuilder context = new StringBuilder();
         for (Scored s : top) {
@@ -120,12 +117,7 @@ public class AskService {
         }
 
         float[] q = ai.embed(question);
-        List<Scored> scored = new ArrayList<>();
-        for (DocumentChunk c : chunks) {
-            scored.add(new Scored(c, cosine(q, c.getEmbedding())));
-        }
-        scored.sort(Comparator.comparingDouble(Scored::score).reversed());
-        List<Scored> top = scored.subList(0, Math.min(TOP_K, scored.size()));
+        List<Scored> top = selectChunks(chunks, q);
 
         StringBuilder context = new StringBuilder();
         List<AskResponse.Source> sources = new ArrayList<>();
@@ -171,6 +163,41 @@ public class AskService {
                 UUID.randomUUID().toString(), jobId, "user", question, null, now));
         chatRepository.save(new ChatMessage(
                 UUID.randomUUID().toString(), jobId, "assistant", answer, modelSources, now.plusMillis(1)));
+    }
+
+    /**
+     * Retrieval + rerank: score every chunk by cosine to the question, keep a
+     * shortlist, then use Maximal Marginal Relevance to choose the final set —
+     * relevant but not redundant, so the model gets diverse supporting excerpts.
+     */
+    private static List<Scored> selectChunks(List<DocumentChunk> chunks, float[] q) {
+        List<Scored> scored = new ArrayList<>();
+        for (DocumentChunk c : chunks) {
+            scored.add(new Scored(c, cosine(q, c.getEmbedding())));
+        }
+        scored.sort(Comparator.comparingDouble(Scored::score).reversed());
+
+        List<Scored> pool = new ArrayList<>(scored.subList(0, Math.min(CANDIDATES, scored.size())));
+        List<Scored> selected = new ArrayList<>();
+        while (!pool.isEmpty() && selected.size() < TOP_K) {
+            Scored best = null;
+            double bestMmr = -Double.MAX_VALUE;
+            for (Scored cand : pool) {
+                double redundancy = 0;
+                for (Scored s : selected) {
+                    redundancy = Math.max(redundancy,
+                            cosine(cand.chunk().getEmbedding(), s.chunk().getEmbedding()));
+                }
+                double mmr = MMR_LAMBDA * cand.score() - (1 - MMR_LAMBDA) * redundancy;
+                if (mmr > bestMmr) {
+                    bestMmr = mmr;
+                    best = cand;
+                }
+            }
+            selected.add(best);
+            pool.remove(best);
+        }
+        return selected;
     }
 
     private static String excerpt(String text) {

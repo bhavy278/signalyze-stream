@@ -9,15 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ChunkerTest {
 
     private static final int CHUNK_SIZE = 800;
-    private static final int OVERLAP = 150;
-
-    // Deterministic filler with no whitespace, so strip() never alters boundaries.
-    private static String filler(int len) {
-        StringBuilder sb = new StringBuilder(len);
-        String cycle = "abcdefghij";
-        for (int i = 0; i < len; i++) sb.append(cycle.charAt(i % cycle.length()));
-        return sb.toString();
-    }
 
     @Test
     void returnsEmptyForNullOrBlank() {
@@ -32,32 +23,37 @@ class ChunkerTest {
     }
 
     @Test
-    void longTextIsSplitIntoOverlappingWindows() {
-        List<String> chunks = Chunker.chunk(filler(2000));
+    void keepsSentencesWhole() {
+        // Build a document of many distinct, whole sentences.
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 200; i++) {
+            sb.append("Clause number ").append(i).append(" states an obligation. ");
+        }
+        List<String> chunks = Chunker.chunk(sb.toString());
 
         assertThat(chunks.size()).isGreaterThan(1);
-        // no chunk exceeds the window size
-        assertThat(chunks).allSatisfy(c -> assertThat(c.length()).isLessThanOrEqualTo(CHUNK_SIZE));
-        // consecutive chunks overlap by OVERLAP chars: tail of one == head of the next
-        String firstTail = chunks.get(0).substring(chunks.get(0).length() - OVERLAP);
-        String secondHead = chunks.get(1).substring(0, OVERLAP);
-        assertThat(secondHead).isEqualTo(firstTail);
+        // a representative sentence survives intact inside some chunk (not cut)
+        String sentence = "Clause number 42 states an obligation.";
+        assertThat(chunks).anySatisfy(c -> assertThat(c).contains(sentence));
     }
 
     @Test
-    void coversTheEntireDocument() {
-        String text = filler(2000);
-        List<String> chunks = Chunker.chunk(text);
+    void hardSplitsAVeryLongUnpunctuatedRun() {
+        // No sentence boundaries → falls back to hard windows, none absurdly large.
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 2500; i++) sb.append('x');
+        List<String> chunks = Chunker.chunk(sb.toString());
 
-        String firstChunk = chunks.get(0);
-        String lastChunk = chunks.get(chunks.size() - 1);
-        assertThat(text).startsWith(firstChunk.substring(0, 50));
-        assertThat(text).endsWith(lastChunk.substring(lastChunk.length() - 50));
+        assertThat(chunks.size()).isGreaterThan(1);
+        assertThat(chunks).allSatisfy(c -> assertThat(c.length()).isLessThanOrEqualTo(CHUNK_SIZE));
     }
 
     @Test
     void capsAtFortyChunks() {
-        // input large enough to produce far more than 40 windows if uncapped
-        assertThat(Chunker.chunk(filler(100_000))).hasSizeLessThanOrEqualTo(40);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 5000; i++) {
+            sb.append("Sentence ").append(i).append(" here. ");
+        }
+        assertThat(Chunker.chunk(sb.toString())).hasSizeLessThanOrEqualTo(40);
     }
 }

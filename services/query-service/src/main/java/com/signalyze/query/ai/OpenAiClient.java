@@ -4,10 +4,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Duration;
+import java.util.HexFormat;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -22,6 +27,7 @@ public class OpenAiClient {
     private final RestClient restClient;
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper;
+    private final StringRedisTemplate redis;
     private final String apiKey;
     private final String baseUrl;
     private final String chatModel;
@@ -31,12 +37,14 @@ public class OpenAiClient {
                         @Value("${openai.base-url}") String baseUrl,
                         @Value("${openai.model}") String chatModel,
                         @Value("${openai.embedding-model}") String embeddingModel,
-                        ObjectMapper objectMapper) {
+                        ObjectMapper objectMapper,
+                        StringRedisTemplate redis) {
         this.apiKey = apiKey;
         this.baseUrl = baseUrl;
         this.chatModel = chatModel;
         this.embeddingModel = embeddingModel;
         this.objectMapper = objectMapper;
+        this.redis = redis;
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
                 .defaultHeader("Authorization", "Bearer " + apiKey)
@@ -44,6 +52,19 @@ public class OpenAiClient {
     }
 
     public float[] embed(String input) {
+        String key = "emb:" + embeddingModel + ":" + sha256(input);
+        try {
+            String cached = redis.opsForValue().get(key);
+            if (cached != null && !cached.isBlank()) {
+                String[] parts = cached.split(",");
+                float[] hit = new float[parts.length];
+                for (int i = 0; i < parts.length; i++) hit[i] = Float.parseFloat(parts[i]);
+                return hit;
+            }
+        } catch (Exception ignored) {
+            // cache is best-effort; fall through to the API on any Redis issue
+        }
+
         Map<String, Object> body = Map.of("model", embeddingModel, "input", input);
         EmbeddingResponse res = restClient.post()
                 .uri("/embeddings")
@@ -57,7 +78,27 @@ public class OpenAiClient {
         List<Double> vec = res.data().get(0).embedding();
         float[] arr = new float[vec.size()];
         for (int i = 0; i < arr.length; i++) arr[i] = vec.get(i).floatValue();
+
+        try {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < arr.length; i++) {
+                if (i > 0) sb.append(',');
+                sb.append(arr[i]);
+            }
+            redis.opsForValue().set(key, sb.toString(), Duration.ofHours(24));
+        } catch (Exception ignored) {
+            // ignore cache write failures
+        }
         return arr;
+    }
+
+    private static String sha256(String s) {
+        try {
+            byte[] h = MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(h);
+        } catch (Exception e) {
+            return Integer.toHexString(s.hashCode());
+        }
     }
 
     public String chat(List<Map<String, String>> messages) {
