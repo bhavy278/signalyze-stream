@@ -2,10 +2,17 @@ import type { Analysis } from "@/lib/types";
 import { pillClass, sevClass, statusLabel } from "@/lib/format";
 import { Skeleton } from "@/components/Skeleton";
 
-export default function AnalysisReport({ selected }: { selected: Analysis }) {
+export default function AnalysisReport({
+  selected,
+  streamingOverview,
+}: {
+  selected: Analysis;
+  streamingOverview?: string;
+}) {
   const r = selected.result ?? null;
   const summaryText = r?.summary ?? selected.summary ?? "";
   const status = selected.status.toUpperCase();
+  const liveOverview = (streamingOverview ?? "").trim();
 
   return (
     <div className="card" style={{ padding: 24 }}>
@@ -33,9 +40,16 @@ export default function AnalysisReport({ selected }: { selected: Analysis }) {
 
       {status === "PROCESSING" && (
         <div style={{ marginTop: 16 }}>
-          <p style={{ color: "var(--muted)", marginBottom: 16 }}>
-            Analyzing the document…
-          </p>
+          {liveOverview ? (
+            <p className="stream-overview">
+              {liveOverview}
+              <span className="stream-cursor" />
+            </p>
+          ) : (
+            <p style={{ color: "var(--muted)", marginBottom: 16 }}>
+              Analyzing the document…
+            </p>
+          )}
           <Skeleton w="88%" h={12} style={{ marginBottom: 9 }} />
           <Skeleton w="76%" h={12} style={{ marginBottom: 9 }} />
           <Skeleton w="54%" h={12} />
