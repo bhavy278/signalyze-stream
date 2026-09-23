@@ -1,12 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Plus, Upload, RefreshCw } from "lucide-react";
+import { Plus, Upload, RefreshCw, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Analysis } from "@/lib/types";
 import { getAnalysis, getStatus, streamAnalysis, streamStatus, uploadDocument } from "@/lib/api";
 import DocumentWorkspace from "@/components/DocumentWorkspace";
 import { useToast } from "@/components/Toast";
+
+const SAMPLE_URL = "/samples/consulting-services-agreement.txt";
+const SAMPLE_NAME = "Consulting Services Agreement.txt";
 
 export default function Home() {
   const [selected, setSelected] = useState<Analysis | null>(null);
@@ -96,6 +99,19 @@ export default function Home() {
     }
   }
 
+  async function loadSample() {
+    if (busy) return;
+    try {
+      const res = await fetch(SAMPLE_URL, { cache: "no-store" });
+      if (!res.ok) throw new Error("sample fetch failed");
+      const blob = await res.blob();
+      const file = new File([blob], SAMPLE_NAME, { type: "text/plain" });
+      void handleFile(file);
+    } catch {
+      toast("Couldn't load the sample — try uploading a file instead", "error");
+    }
+  }
+
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) void handleFile(file);
@@ -150,6 +166,19 @@ export default function Home() {
             <div className="dz-sub">PDF or text file</div>
             <button className="btn" type="button" disabled={busy}>
               Browse files
+            </button>
+          </div>
+
+          <div className="sample-row">
+            <span className="sample-hint">No file handy?</span>
+            <button
+              className="sample-link"
+              type="button"
+              onClick={loadSample}
+              disabled={busy}
+            >
+              <FileText size={14} />
+              Try a sample contract
             </button>
           </div>
         </>

@@ -1,0 +1,40 @@
+CONSULTING SERVICES AGREEMENT
+
+This Consulting Services Agreement (the "Agreement") is entered into as of March 1, 2026 (the "Effective Date") by and between Northwind Traders, Inc., a Delaware corporation with offices at 500 Harbor Boulevard, Wilmington, Delaware ("Client"), and Brightpath Consulting LLC, a California limited liability company with offices at 88 Cedar Street, San Jose, California ("Consultant"). Client and Consultant are each a "Party" and together the "Parties."
+
+1. SERVICES
+Consultant will provide data-platform advisory and implementation services as described in one or more Statements of Work ("SOW") executed by both Parties. The initial SOW covers migration of Client's analytics workloads to a streaming architecture. Consultant will perform the Services in a professional and workmanlike manner consistent with industry standards.
+
+2. TERM AND RENEWAL
+This Agreement begins on the Effective Date and continues for an initial term of twelve (12) months. It will automatically renew for successive twelve (12) month terms unless either Party gives written notice of non-renewal at least ninety (90) days before the end of the then-current term.
+
+3. FEES AND PAYMENT
+Client will pay Consultant a fixed fee of twelve thousand US dollars ($12,000) per month. Invoices are due net fifteen (15) days from the invoice date. Any amount not paid when due accrues a late charge of five percent (5%) per month, compounded monthly, until paid in full.
+
+4. TERMINATION
+Client may terminate this Agreement or any SOW for convenience upon sixty (60) days' written notice to Consultant. Consultant may terminate only for Client's uncured material breach, and only after providing thirty (30) days' written notice and an opportunity to cure. Upon termination, Client will pay for Services properly performed through the termination date.
+
+5. INTELLECTUAL PROPERTY
+All deliverables, work product, and materials created by Consultant in the course of performing the Services are "work made for hire" and are assigned exclusively to Client upon creation. Consultant retains no rights in the deliverables other than a limited license to its pre-existing tools.
+
+6. CONFIDENTIALITY
+Each Party will protect the other's Confidential Information using at least reasonable care and will not disclose it to third parties except as necessary to perform under this Agreement. Confidentiality obligations survive termination for a period of three (3) years.
+
+7. INDEMNIFICATION
+Consultant will indemnify, defend, and hold harmless Client and its officers, directors, employees, and agents from and against any and all claims, damages, losses, and expenses (including reasonable attorneys' fees) arising out of or related to the Services or this Agreement. Client has no reciprocal obligation to indemnify Consultant under this Agreement.
+
+8. LIMITATION OF LIABILITY
+The liability of Consultant under this Agreement is not capped and extends to direct, indirect, incidental, and consequential damages. Client's aggregate liability under this Agreement will not exceed the fees paid in the three (3) months preceding the claim.
+
+9. GOVERNING LAW
+This Agreement is governed by and construed in accordance with the laws of the State of Delaware, without regard to its conflict-of-laws principles. The Parties consent to the exclusive jurisdiction of the state and federal courts located in Wilmington, Delaware.
+
+10. ENTIRE AGREEMENT
+This Agreement, together with any SOWs, constitutes the entire agreement between the Parties and supersedes all prior discussions. Any amendment must be in writing and signed by both Parties.
+
+IN WITNESS WHEREOF, the Parties have executed this Agreement as of the Effective Date.
+
+NORTHWIND TRADERS, INC.                    BRIGHTPATH CONSULTING LLC
+By: ____________________                   By: ____________________
+Name: Dana Whitfield                       Name: Marcus Ellison
+Title: Chief Operating Officer             Title: Managing Partner

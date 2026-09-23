@@ -19,12 +19,14 @@ Built as a hands-on system-design project: a fleet of Spring Boot microservices 
 ## What it does
 
 - **Structured analysis** — every upload is classified (Lease, Service Agreement, NDA, Invoice, …) and broken into parties, key terms, and severity-rated risk flags — not just a paragraph summary.
+- **Live analysis stream** — the moment a document lands, an executive read of it types out token by token over SSE while the structured breakdown is generated behind it — the same live treatment as the Q&A.
 - **In-app document viewer** — the original file renders in the browser (PDF via a pdf.js text layer, plus DOCX, Markdown, and plain text) with zoom, page navigation (current / total, jump-to-page), and **in-document search that highlights the actual words** on the page.
 - **Ask the document (streaming RAG)** — ask a natural-language question and watch the answer stream back **token by token over SSE**, grounded in the document with the source excerpts it was drawn from. Retrieval-augmented generation: chunk → embed → retrieve by cosine similarity → generate. Conversations are multi-turn and saved.
 - **Click-to-source** — every cited excerpt is clickable and jumps you to that passage in the viewer, highlighted.
 - **Real-time status** — no polling: the UI holds one SSE stream and the document flips `PROCESSING → DONE` the instant the pipeline finishes, pushed from a Kafka consumer.
 - **Accounts & multi-tenancy** — email/password sign-in with JWT; every document, analysis, chat, and file is scoped to its owner, so users only ever see their own data.
 - **Manage & find** — a searchable, paginated archive with per-document metadata (type, parties, risk-flag count/severity, status) and delete.
+- **Try it instantly** — a one-click *Try a sample contract* button runs a bundled agreement through the full pipeline, so the app is demoable with no file of your own.
 
 ---
 
@@ -65,16 +67,21 @@ Three Kafka topics carry the flow: `document.uploaded`, `document.processed`, an
 
 ### How the RAG Q&A works
 
-1. **Index (at processing time):** the document text is split into overlapping ~800-character chunks; each is embedded with OpenAI `text-embedding-3-small` and stored in MongoDB alongside the analysis.
-2. **Ask (at query time):** the question is embedded, scored against every chunk of *that* document by cosine similarity, and the top matches become the context for a `gpt-4o-mini` completion instructed to answer only from those excerpts. Tokens stream back to the browser over SSE as they are generated.
+1. **Index (at processing time):** the document text is split into overlapping, sentence-aware ~800-character chunks; each is embedded with OpenAI `text-embedding-3-small` (embeddings cached in Redis) and stored in MongoDB alongside the analysis.
+2. **Ask (at query time):** the question is embedded, scored against every chunk of *that* document by cosine similarity, reranked with Maximal Marginal Relevance (relevance without redundancy), and the top matches become the context for a `gpt-4o-mini` completion instructed to answer only from those excerpts. Tokens stream back to the browser over SSE as they are generated.
 
 Retrieval is scoped to a single document's handful of vectors, so in-app cosine similarity is the right tool — no vector database required. (MongoDB Atlas Vector Search would be the upgrade path at scale.)
+
+### Evaluating retrieval quality
+
+Retrieval quality isn't eyeballed — [`eval/rag_eval.py`](eval/README.md) runs a golden Q&A set against the live pipeline (register → upload the sample contract → process → ask) and scores every answer for the expected facts and for grounding sources, printing a pass rate and exiting non-zero below a threshold so it can gate CI. It's the guardrail for changes to chunking, reranking, or prompts.
 
 ### Streaming & real-time (SSE)
 
 Two things reach the browser as Server-Sent Events, both served by `query-service` and proxied through Next.js route handlers:
 
 - **Streamed answers** — the OpenAI chat completion is consumed as a stream and each token is forwarded to the client, so answers appear as they're written.
+- **Streamed analysis** — while a document is still processing, `processing-service` streams a plain-English overview onto a Redis list that `query-service` drains and relays over SSE, so the analysis panel fills in live instead of waiting for the final card.
 - **Live status** — `query-service` is also a Kafka consumer on `document.processed` / `document.failed`; when a document finishes, it pushes the terminal status down an open SSE connection, replacing the old polling loop.
 
 ### Auth & multi-tenancy
@@ -189,8 +196,9 @@ Built in phases:
 - [x] Document viewer — in-app rendering with zoom, search-highlight, page nav, click-to-source
 - [x] Frontend — multi-page Next.js UI with a coral design system and motion
 - [x] Tests — JUnit + Mockito unit tests + Testcontainers integration (MongoDB)
+- [x] AI quality — sentence-aware chunking, MMR reranking, Redis embedding cache, streamed analysis, RAG eval harness
+- [x] CI/CD — Jenkins pipeline (parallel per-service tests + Docker image builds)
 - [ ] Observability — Actuator + Prometheus + Grafana, trace/correlation IDs
-- [ ] CI/CD — Jenkins pipeline
 - [ ] Cloud — Terraform + AWS deployment
 
 ---

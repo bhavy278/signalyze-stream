@@ -60,7 +60,7 @@ services:
       MONGODB_URI: ${MONGODB_URI}
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -74,7 +74,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -91,7 +91,7 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: signalyze-kafka:29092
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
   auth-service:
@@ -102,3 +102,33 @@ services:
     environment:
       MONGODB_URI: ${MONGODB_URI}
       JWT_SECRET: ${JWT_SECRET}
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: signalyze-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - auth-service
+      - ingest-service
+      - processing-service
+      - query-service
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: signalyze-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: light
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus

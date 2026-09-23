@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signalyze.query.service.StatusEventService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -22,14 +23,22 @@ public class StatusListener {
 
     @KafkaListener(topics = "document.processed", groupId = "query-service")
     public void onProcessed(String message) {
-        String jobId = extractJobId(message);
-        if (jobId != null) statusEvents.publish(jobId, "DONE");
+        publishStatus(extractJobId(message), "DONE");
     }
 
     @KafkaListener(topics = "document.failed", groupId = "query-service")
     public void onFailed(String message) {
-        String jobId = extractJobId(message);
-        if (jobId != null) statusEvents.publish(jobId, "FAILED");
+        publishStatus(extractJobId(message), "FAILED");
+    }
+
+    private void publishStatus(String jobId, String status) {
+        if (jobId == null) return;
+        MDC.put("jobId", jobId);
+        try {
+            statusEvents.publish(jobId, status);
+        } finally {
+            MDC.remove("jobId");
+        }
     }
 
     private String extractJobId(String message) {
