@@ -13,6 +13,7 @@ import com.signalyze.processing.repository.AnalysisRepository;
 import com.signalyze.processing.repository.ChunkRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -58,52 +59,59 @@ public class DocumentListener {
 
     @KafkaListener(topics = "document.uploaded")
     public void onDocumentUploaded(DocumentUploaded event) {
-        log.info("Received DocumentUploaded jobId={} filename={}", event.jobId(), event.filename());
-        String streamKey = ANALYSIS_STREAM_PREFIX + event.jobId();
-
-        // Demo hook: any file whose name contains "fail" simulates a processing error
-        if (event.filename() != null && event.filename().contains("fail")) {
-            pushEvent(streamKey, Map.of("t", "failed"));
-            throw new RuntimeException("Simulated processing failure for " + event.filename());
-        }
-
+        // Tag every log line on this thread with the jobId, so a document's journey across
+        // ingest -> processing -> query can be followed by grepping one id.
+        MDC.put("jobId", event.jobId());
         try {
-            // 1) Stream a live plain-English overview to the UI while we work (best-effort).
-            try {
-                aiSummarizer.streamOverview(event.filename(), event.content(),
-                        token -> pushEvent(streamKey, Map.of("t", "token", "v", token)));
-            } catch (Exception e) {
-                log.warn("Overview streaming failed jobId={}: {}", event.jobId(), e.getMessage());
+            log.info("Received DocumentUploaded jobId={} filename={}", event.jobId(), event.filename());
+            String streamKey = ANALYSIS_STREAM_PREFIX + event.jobId();
+
+            // Demo hook: any file whose name contains "fail" simulates a processing error
+            if (event.filename() != null && event.filename().contains("fail")) {
+                pushEvent(streamKey, Map.of("t", "failed"));
+                throw new RuntimeException("Simulated processing failure for " + event.filename());
             }
 
-            // 2) Full structured analysis — the source of truth.
-            AnalysisResult result = aiSummarizer.analyze(event.filename(), event.content());
-            log.info("AI analysis generated jobId={} type={}", event.jobId(), result.documentType());
+            try {
+                // 1) Stream a live plain-English overview to the UI while we work (best-effort).
+                try {
+                    aiSummarizer.streamOverview(event.filename(), event.content(),
+                            token -> pushEvent(streamKey, Map.of("t", "token", "v", token)));
+                } catch (Exception e) {
+                    log.warn("Overview streaming failed jobId={}: {}", event.jobId(), e.getMessage());
+                }
 
-            Analysis analysis = new Analysis();
-            analysis.setJobId(event.jobId());
-            analysis.setUserId(event.userId());
-            analysis.setFilename(event.filename());
-            analysis.setStatus("DONE");
-            analysis.setSummary(result.summary());
-            analysis.setResult(result);
-            analysis.setCreatedAt(Instant.now());
-            analysisRepository.save(analysis);
+                // 2) Full structured analysis — the source of truth.
+                AnalysisResult result = aiSummarizer.analyze(event.filename(), event.content());
+                log.info("AI analysis generated jobId={} type={}", event.jobId(), result.documentType());
 
-            // RAG indexing: chunk + embed + store (best-effort; never fails the analysis)
-            indexChunks(event.jobId(), event.content());
+                Analysis analysis = new Analysis();
+                analysis.setJobId(event.jobId());
+                analysis.setUserId(event.userId());
+                analysis.setFilename(event.filename());
+                analysis.setStatus("DONE");
+                analysis.setSummary(result.summary());
+                analysis.setResult(result);
+                analysis.setCreatedAt(Instant.now());
+                analysisRepository.save(analysis);
 
-            redis.opsForValue().set("status:" + event.jobId(), "DONE", Duration.ofHours(1));
-            log.info("Saved analysis + set status=DONE jobId={}", event.jobId());
+                // RAG indexing: chunk + embed + store (best-effort; never fails the analysis)
+                indexChunks(event.jobId(), event.content());
 
-            // 3) Tell the live stream we're done so the UI can settle to the final card.
-            pushEvent(streamKey, Map.of("t", "done"));
+                redis.opsForValue().set("status:" + event.jobId(), "DONE", Duration.ofHours(1));
+                log.info("Saved analysis + set status=DONE jobId={}", event.jobId());
 
-            DocumentProcessed processed = DocumentProcessed.done(event.jobId(), result.summary());
-            kafkaTemplate.send(DOCUMENT_PROCESSED, event.jobId(), processed);
-        } catch (RuntimeException e) {
-            pushEvent(streamKey, Map.of("t", "failed"));
-            throw e;
+                // 3) Tell the live stream we're done so the UI can settle to the final card.
+                pushEvent(streamKey, Map.of("t", "done"));
+
+                DocumentProcessed processed = DocumentProcessed.done(event.jobId(), result.summary());
+                kafkaTemplate.send(DOCUMENT_PROCESSED, event.jobId(), processed);
+            } catch (RuntimeException e) {
+                pushEvent(streamKey, Map.of("t", "failed"));
+                throw e;
+            }
+        } finally {
+            MDC.remove("jobId");
         }
     }
 

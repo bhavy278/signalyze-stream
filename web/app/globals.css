@@ -1802,3 +1802,37 @@ mark.s-cur {
 @keyframes stream-blink {
   50% { opacity: 0; }
 }
+
+/* "Try a sample contract" affordance under the dropzone */
+.sample-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+.sample-hint {
+  color: var(--muted);
+  font-size: 14px;
+}
+.sample-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+.sample-link:hover:not(:disabled) {
+  background: var(--accent-weak, rgba(222, 107, 79, 0.1));
+}
+.sample-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
