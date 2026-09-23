@@ -1,5 +1,7 @@
 # Signalyze Stream
 
+[![CI](https://github.com/bhavy278/signalyze-stream/actions/workflows/ci.yml/badge.svg)](https://github.com/bhavy278/signalyze-stream/actions/workflows/ci.yml)
+
 > An event-driven, AI-powered document-intelligence platform. Upload a contract or agreement and get back a structured breakdown — parties, key terms, and risk-flagged clauses — read the original document in an in-app viewer, and ask it questions in plain English with answers streamed back and grounded in cited passages.
 
 Built as a hands-on system-design project: a fleet of Spring Boot microservices communicating asynchronously over Apache Kafka, with MongoDB (documents, analyses, chat, and GridFS file storage), Redis for caching and live status, OpenAI for analysis and retrieval-augmented Q&A, JWT auth for per-user isolation, and a TypeScript / Next.js frontend.
@@ -198,7 +200,7 @@ Built in phases:
 - [x] Tests — JUnit + Mockito unit tests + Testcontainers integration (MongoDB)
 - [x] AI quality — sentence-aware chunking, MMR reranking, Redis embedding cache, streamed analysis, RAG eval harness
 - [x] CI/CD — Jenkins pipeline (parallel per-service tests + Docker image builds)
-- [ ] Observability — Actuator + Prometheus + Grafana, trace/correlation IDs
+- [x] Observability — correlation IDs across services, Actuator + Micrometer, Prometheus + Grafana dashboard, health-gated startup, Makefile + seed, GitHub Actions CI
 - [ ] Cloud — Terraform + AWS deployment
 
 ---
