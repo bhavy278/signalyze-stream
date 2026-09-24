@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [auth-service, ingest-service, processing-service, query-service]
+        service: [auth-service, ingest-service, processing-service, query-service, gateway-service]
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21

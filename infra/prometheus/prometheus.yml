@@ -11,3 +11,4 @@ scrape_configs:
           - 'signalyze-ingest:8081'
           - 'signalyze-processing:8082'
           - 'signalyze-query:8083'
+          - 'signalyze-gateway:8085'

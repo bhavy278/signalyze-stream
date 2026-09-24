@@ -132,3 +132,13 @@ services:
       - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
+
+  gateway-service:
+    build: ./services/gateway-service
+    container_name: signalyze-gateway
+    ports:
+      - "8085:8085"
+    depends_on:
+      - auth-service
+      - ingest-service
+      - query-service

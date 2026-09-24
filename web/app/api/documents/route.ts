@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import type { UploadResponse } from "@/lib/types";
 import { authHeaders } from "@/lib/server-auth";
 
-const INGEST_URL = process.env.INGEST_URL ?? "http://localhost:8081";
-const QUERY_URL = process.env.QUERY_URL ?? "http://localhost:8083";
+const INGEST_URL = process.env.INGEST_URL ?? "http://localhost:8085";
+const QUERY_URL = process.env.QUERY_URL ?? "http://localhost:8085";
 
 // Upload a document → forwards to ingest-service (with the user's token)
 export async function POST(req: NextRequest) {

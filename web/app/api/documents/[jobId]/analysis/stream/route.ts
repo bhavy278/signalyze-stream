@@ -1,6 +1,6 @@
 import { authHeaders } from "@/lib/server-auth";
 
-const QUERY_URL = process.env.QUERY_URL ?? "http://localhost:8083";
+const QUERY_URL = process.env.QUERY_URL ?? "http://localhost:8085";
 
 export async function GET(
   _req: Request,
