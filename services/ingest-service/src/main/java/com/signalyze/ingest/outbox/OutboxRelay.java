@@ -14,7 +14,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * Polls the outbox and publishes PENDING events to Kafka, marking each SENT once the broker
  * acknowledges. A failed publish leaves the row PENDING (attempts incremented) to be retried
- * on the next tick, so an event is delivered at-least-once even across broker outages.
+ * on the next tick, so an event is delivered at-least-once even across broker outages. The
+ * whole tick is guarded, so a transient datastore blip is logged and retried rather than
+ * throwing out of the scheduler.
  *
  * Single-relay assumption: with multiple ingest instances a claim step (findAndModify to a
  * SENDING state) would be needed to avoid double-publish; the processing side is the place to
@@ -36,9 +38,17 @@ public class OutboxRelay {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    @Scheduled(fixedDelayString = "${outbox.relay.poll-interval-ms:2000}")
+    @Scheduled(fixedDelayString = "${outbox.relay.poll-interval-ms:2000}",
+            initialDelayString = "${outbox.relay.initial-delay-ms:3000}")
     public void relay() {
-        List<OutboxEvent> batch = repository.findByStatusOrderByCreatedAtAsc(PENDING, PageRequest.of(0, BATCH));
+        List<OutboxEvent> batch;
+        try {
+            batch = repository.findByStatusOrderByCreatedAtAsc(PENDING, PageRequest.of(0, BATCH));
+        } catch (Exception e) {
+            // Datastore momentarily unavailable — skip this tick and try again on the next one.
+            log.warn("Outbox poll failed (will retry next tick): {}", e.toString());
+            return;
+        }
         if (batch.isEmpty()) {
             return;
         }
@@ -52,7 +62,11 @@ public class OutboxRelay {
                 sent++;
             } catch (Exception ex) {
                 e.setAttempts(e.getAttempts() + 1);
-                repository.save(e);
+                try {
+                    repository.save(e);
+                } catch (Exception ignored) {
+                    // best-effort attempt bookkeeping
+                }
                 log.warn("Outbox publish failed id={} attempts={}: {}", e.getId(), e.getAttempts(), ex.toString());
             }
         }
