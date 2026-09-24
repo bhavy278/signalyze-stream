@@ -2,6 +2,10 @@ package com.signalyze.query.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -21,8 +25,20 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+/**
+ * Thin client for the OpenAI API. Every outbound call is wrapped with a Resilience4j
+ * circuit breaker (instance "openai") plus retry: transient failures are retried with
+ * exponential backoff, and if OpenAI is consistently failing the breaker opens and calls
+ * short-circuit to a graceful fallback instead of piling onto a dead dependency. The
+ * breaker's state and metrics are exported to Micrometer, so they show up in Grafana.
+ */
 @Service
 public class OpenAiClient {
+
+    private static final Logger log = LoggerFactory.getLogger(OpenAiClient.class);
+    private static final String CB = "openai";
+    private static final String UNAVAILABLE =
+            "The assistant is temporarily unavailable. Please try your question again in a moment.";
 
     private final RestClient restClient;
     private final HttpClient httpClient = HttpClient.newHttpClient();
@@ -51,6 +67,8 @@ public class OpenAiClient {
                 .build();
     }
 
+    @Retry(name = CB)
+    @CircuitBreaker(name = CB)
     public float[] embed(String input) {
         String key = "emb:" + embeddingModel + ":" + sha256(input);
         try {
@@ -101,6 +119,8 @@ public class OpenAiClient {
         }
     }
 
+    @Retry(name = CB)
+    @CircuitBreaker(name = CB, fallbackMethod = "chatFallback")
     public String chat(List<Map<String, String>> messages) {
         Map<String, Object> body = Map.of("model", chatModel, "messages", messages);
         ChatResponse res = restClient.post()
@@ -115,7 +135,14 @@ public class OpenAiClient {
         return res.choices().get(0).message().content();
     }
 
+    @SuppressWarnings("unused")
+    private String chatFallback(List<Map<String, String>> messages, Throwable t) {
+        log.warn("OpenAI chat fallback (circuit={}): {}", CB, t.toString());
+        return UNAVAILABLE;
+    }
+
     /** Streams a chat completion, invoking onToken for each content delta as it arrives. */
+    @CircuitBreaker(name = CB, fallbackMethod = "streamChatFallback")
     public void streamChat(List<Map<String, String>> messages, Consumer<String> onToken) {
         try {
             Map<String, Object> body = Map.of(
@@ -146,6 +173,12 @@ public class OpenAiClient {
         } catch (Exception e) {
             throw new RuntimeException("Streaming failed: " + e.getMessage(), e);
         }
+    }
+
+    @SuppressWarnings("unused")
+    private void streamChatFallback(List<Map<String, String>> messages, Consumer<String> onToken, Throwable t) {
+        log.warn("OpenAI stream fallback (circuit={}): {}", CB, t.toString());
+        onToken.accept(UNAVAILABLE);
     }
 
     public record EmbeddingResponse(List<Item> data) {}

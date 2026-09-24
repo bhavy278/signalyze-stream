@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const AUTH_URL = process.env.AUTH_URL ?? "http://localhost:8084";
+const AUTH_URL = process.env.AUTH_URL ?? "http://localhost:8085";
 const COOKIE = "sz_token";
 
 export async function POST(req: Request) {
