@@ -2,10 +2,12 @@ package com.signalyze.auth.web;
 
 import com.signalyze.auth.dto.AuthResponse;
 import com.signalyze.auth.dto.LoginRequest;
+import com.signalyze.auth.dto.RefreshRequest;
 import com.signalyze.auth.dto.RegisterRequest;
 import com.signalyze.auth.model.User;
 import com.signalyze.auth.repository.UserRepository;
 import com.signalyze.auth.security.JwtService;
+import com.signalyze.auth.security.RefreshTokenService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,11 +28,14 @@ public class AuthController {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
+    private final RefreshTokenService refreshTokens;
 
-    public AuthController(UserRepository users, PasswordEncoder encoder, JwtService jwt) {
+    public AuthController(UserRepository users, PasswordEncoder encoder, JwtService jwt,
+                         RefreshTokenService refreshTokens) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
+        this.refreshTokens = refreshTokens;
     }
 
     @PostMapping("/register")
@@ -46,7 +51,7 @@ public class AuthController {
         }
         User user = new User(null, email, encoder.encode(req.password()), Instant.now());
         users.save(user);
-        return ResponseEntity.ok(new AuthResponse(jwt.issue(user.getId(), email), email));
+        return ResponseEntity.ok(tokensFor(user.getId(), email));
     }
 
     @PostMapping("/login")
@@ -58,7 +63,30 @@ public class AuthController {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid email or password."));
         }
         User user = found.get();
-        return ResponseEntity.ok(new AuthResponse(jwt.issue(user.getId(), email), email));
+        return ResponseEntity.ok(tokensFor(user.getId(), email));
+    }
+
+    /** Exchanges a valid refresh token for a fresh access token and a rotated refresh token. */
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody(required = false) RefreshRequest req) {
+        String raw = (req == null) ? null : req.refreshToken();
+        if (raw == null || raw.isBlank()) {
+            return ResponseEntity.status(401).body(Map.of("error", "Missing refresh token."));
+        }
+        return refreshTokens.rotate(raw)
+                .<ResponseEntity<?>>map(r -> ResponseEntity.ok(
+                        new AuthResponse(jwt.issue(r.userId(), r.email()), r.refreshToken(), r.email())))
+                .orElseGet(() -> ResponseEntity.status(401)
+                        .body(Map.of("error", "Invalid or expired refresh token.")));
+    }
+
+    /** Revokes the given refresh token (client also clears its own copy). */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestBody(required = false) RefreshRequest req) {
+        if (req != null) {
+            refreshTokens.revoke(req.refreshToken());
+        }
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")
@@ -74,5 +102,11 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.status(401).build();
         }
+    }
+
+    private AuthResponse tokensFor(String userId, String email) {
+        String access = jwt.issue(userId, email);
+        String refresh = refreshTokens.issue(userId, email);
+        return new AuthResponse(access, refresh, email);
     }
 }

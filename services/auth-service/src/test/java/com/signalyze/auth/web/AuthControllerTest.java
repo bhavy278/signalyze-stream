@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signalyze.auth.model.User;
 import com.signalyze.auth.repository.UserRepository;
 import com.signalyze.auth.security.JwtService;
+import com.signalyze.auth.security.RefreshTokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -45,6 +46,8 @@ class AuthControllerTest {
     private PasswordEncoder encoder;
     @MockBean
     private JwtService jwt;
+    @MockBean
+    private RefreshTokenService refreshTokens;
 
     private String body(Object o) throws Exception {
         return om.writeValueAsString(o);
@@ -55,11 +58,13 @@ class AuthControllerTest {
         when(users.existsByEmail("new@ex.com")).thenReturn(false);
         when(encoder.encode(anyString())).thenReturn("hashed");
         when(jwt.issue(any(), eq("new@ex.com"))).thenReturn("tok-123");
+        when(refreshTokens.issue(any(), eq("new@ex.com"))).thenReturn("refresh-123");
 
         mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("email", "new@ex.com", "password", "secret1"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("tok-123"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-123"))
                 .andExpect(jsonPath("$.email").value("new@ex.com"));
     }
 
@@ -85,11 +90,13 @@ class AuthControllerTest {
         when(users.findByEmail("user@ex.com")).thenReturn(Optional.of(user));
         when(encoder.matches("secret1", "hashed")).thenReturn(true);
         when(jwt.issue("uid-1", "user@ex.com")).thenReturn("tok-xyz");
+        when(refreshTokens.issue("uid-1", "user@ex.com")).thenReturn("refresh-xyz");
 
         mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("email", "user@ex.com", "password", "secret1"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("tok-xyz"));
+                .andExpect(jsonPath("$.token").value("tok-xyz"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-xyz"));
     }
 
     @Test
