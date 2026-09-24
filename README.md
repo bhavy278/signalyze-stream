@@ -197,7 +197,7 @@ Built in phases:
 - [x] Streaming & real-time — SSE for token-streamed answers and live status (no polling)
 - [x] Document viewer — in-app rendering with zoom, search-highlight, page nav, click-to-source
 - [x] Frontend — multi-page Next.js UI with a coral design system and motion
-- [x] Tests — JUnit + Mockito unit tests + Testcontainers integration (MongoDB)
+- [x] Tests & quality — JUnit + Mockito units, WebMvcTest controller slices, Testcontainers (MongoDB) integration, JaCoCo coverage, Trivy scan in CI
 - [x] AI quality — sentence-aware chunking, MMR reranking, Redis embedding cache, streamed analysis, RAG eval harness
 - [x] CI/CD — Jenkins pipeline (parallel per-service tests + Docker image builds)
 - [x] Observability — correlation IDs across services, Actuator + Micrometer, Prometheus + Grafana dashboard, health-gated startup, Makefile + seed, GitHub Actions CI
