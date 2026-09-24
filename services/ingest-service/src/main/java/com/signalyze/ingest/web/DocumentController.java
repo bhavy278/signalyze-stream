@@ -2,6 +2,8 @@ package com.signalyze.ingest.web;
 
 import com.signalyze.ingest.config.KafkaTopicsConfig;
 import com.signalyze.ingest.event.DocumentUploaded;
+import com.signalyze.ingest.outbox.OutboxEvent;
+import com.signalyze.ingest.outbox.OutboxRepository;
 import com.signalyze.ingest.security.CurrentUser;
 import com.signalyze.ingest.storage.FileStorageService;
 import org.apache.pdfbox.Loader;
@@ -12,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,13 +37,13 @@ public class DocumentController {
     private static final int MAX_CONTENT_CHARS = 30_000;
     private static final Set<String> ALLOWED_EXT = Set.of("pdf", "txt", "md", "markdown");
 
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final OutboxRepository outbox;
     private final StringRedisTemplate redis;
     private final FileStorageService fileStorage;
 
-    public DocumentController(KafkaTemplate<String, Object> kafkaTemplate, StringRedisTemplate redis,
+    public DocumentController(OutboxRepository outbox, StringRedisTemplate redis,
                              FileStorageService fileStorage) {
-        this.kafkaTemplate = kafkaTemplate;
+        this.outbox = outbox;
         this.redis = redis;
         this.fileStorage = fileStorage;
     }
@@ -75,8 +76,13 @@ public class DocumentController {
                 DocumentUploaded.of(jobId, userId, file.getOriginalFilename(), file.getSize(), content);
 
         redis.opsForValue().set("status:" + jobId, "PROCESSING", Duration.ofHours(1));
-        kafkaTemplate.send(KafkaTopicsConfig.DOCUMENT_UPLOADED, jobId, event);
-        log.info("Published DocumentUploaded jobId={} userId={} filename={}", jobId, userId, file.getOriginalFilename());
+
+        // Transactional outbox: persist the event durably now; the OutboxRelay publishes it to
+        // Kafka out-of-band. This removes the dual-write risk (file stored but event lost if the
+        // broker is down) and makes upload resilient to Kafka being momentarily unavailable.
+        outbox.save(OutboxEvent.pending(KafkaTopicsConfig.DOCUMENT_UPLOADED, jobId, event));
+        log.info("Enqueued DocumentUploaded to outbox jobId={} userId={} filename={}",
+                jobId, userId, file.getOriginalFilename());
 
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(Map.of("jobId", jobId, "status", "PROCESSING"));
