@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 
 const appLinks = [
@@ -15,14 +15,13 @@ const publicLinks = [
 
 export default function Nav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
 
   const links = user ? [...appLinks, ...publicLinks] : publicLinks;
 
   async function handleLogout() {
     await logout();
-    router.push("/login");
+    window.location.assign("/login");
   }
 
   return (

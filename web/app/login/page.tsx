@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { apiLogin, apiRegister } from "@/lib/auth";
-import { useAuth } from "@/components/AuthProvider";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -11,8 +9,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-  const { refresh } = useAuth();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,8 +17,10 @@ export default function LoginPage() {
     try {
       if (mode === "login") await apiLogin(email.trim(), password);
       else await apiRegister(email.trim(), password);
-      await refresh();
-      router.push("/");
+      // Hard navigation: forces a fresh server render that reads the new
+      // httpOnly cookie and re-initializes AuthProvider. router.push() was
+      // leaving the user stranded on this page.
+      window.location.assign("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setBusy(false);
