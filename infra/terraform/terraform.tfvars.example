@@ -1,0 +1,11 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit real secrets.
+
+aws_region    = "us-east-1"
+instance_type = "t3.xlarge"      # t3.large is cheaper but tight during the on-instance build
+key_name      = "your-ec2-keypair-name"   # must already exist in aws_region
+ssh_cidr      = "YOUR.IP.ADDR.HERE/32"     # lock SSH to your IP; use 0.0.0.0/0 only if you must
+
+mongodb_uri    = "mongodb+srv://user:pass@cluster.xxxx.mongodb.net/signalyze"
+openai_api_key = "sk-..."
+jwt_secret     = "a-64-character-or-longer-random-secret-............................"
