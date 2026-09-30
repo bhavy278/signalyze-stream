@@ -1,0 +1,18 @@
+# Overlay for a full-app deploy (EC2). Use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Adds the containerized Next.js frontend, which reaches the backend through the
+# gateway over the compose network (not localhost, since each service is its own container).
+services:
+  web:
+    build: ./web
+    container_name: signalyze-web
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      AUTH_URL: http://signalyze-gateway:8085
+      INGEST_URL: http://signalyze-gateway:8085
+      QUERY_URL: http://signalyze-gateway:8085
+    depends_on:
+      - gateway-service
+    restart: unless-stopped
