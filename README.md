@@ -5,11 +5,11 @@
 > An event-driven, AI-powered document-intelligence platform. Upload a contract or agreement and get back a structured breakdown — parties, key terms, and risk-flagged clauses — read the original document in an in-app viewer, and ask it questions in plain English with answers streamed back and grounded in cited passages.
 
 <p align="center">
-  <a href="brag-output/brag.mp4">
-    <img src="docs/images/brag.gif" alt="Signalyze Stream — launch video" width="860">
+  <a href="https://youtu.be/XnFC8x3Rc3E">
+    <img src="docs/images/brag.gif" alt="Signalyze Stream — launch video (watch on YouTube)" width="860">
   </a>
 </p>
-<p align="center"><em>▶ <a href="brag-output/brag.mp4">Watch the full video with sound</a></em></p>
+<p align="center"><em>▶ <a href="https://youtu.be/XnFC8x3Rc3E">Watch the full video on YouTube</a></em></p>
 
 Built as a hands-on system-design project: a fleet of Spring Boot microservices communicating asynchronously over Apache Kafka, with MongoDB (documents, analyses, chat, and GridFS file storage), Redis for caching and live status, OpenAI for analysis and retrieval-augmented Q&A, JWT auth for per-user isolation, and a TypeScript / Next.js frontend.
 
