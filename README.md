@@ -6,10 +6,10 @@
 
 <p align="center">
   <a href="brag-output/brag.mp4">
-    <img src="docs/images/brag-poster.jpg" alt="Signalyze Stream — watch the 20-second launch video" width="820">
+    <img src="docs/images/brag.gif" alt="Signalyze Stream — launch video" width="860">
   </a>
 </p>
-<p align="center"><a href="brag-output/brag.mp4"><strong>▶ Watch the 20-second launch video</strong></a></p>
+<p align="center"><em>▶ <a href="brag-output/brag.mp4">Watch the full video with sound</a></em></p>
 
 Built as a hands-on system-design project: a fleet of Spring Boot microservices communicating asynchronously over Apache Kafka, with MongoDB (documents, analyses, chat, and GridFS file storage), Redis for caching and live status, OpenAI for analysis and retrieval-augmented Q&A, JWT auth for per-user isolation, and a TypeScript / Next.js frontend.
 
