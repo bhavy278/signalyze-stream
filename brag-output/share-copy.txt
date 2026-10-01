@@ -1,0 +1,1 @@
+Signalyze Stream — upload a contract, get a structured breakdown in seconds: parties, key terms, and risk-flagged clauses, with a grounded Q&A that cites the exact passage it's answering from. Event-driven under the hood — Spring Boot microservices over Kafka, with MongoDB, Redis, OpenAI, and a Next.js front end. Code: github.com/bhavy278/signalyze-stream
